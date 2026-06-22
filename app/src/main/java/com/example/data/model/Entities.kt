@@ -9,7 +9,10 @@ data class FinanceAccount(
     val name: String,
     val type: String, // CHECKING (Corrente), SAVINGS (Poupança), CASH (Carteira), INVESTMENT (Investimentos)
     val balance: Double,
-    val colorHex: String = "#3F51B5"
+    val colorHex: String = "#3F51B5",
+    val bankName: String = "",
+    val agency: String = "",
+    val accountNumber: String = ""
 )
 
 @Entity(tableName = "transactions")
@@ -73,5 +76,46 @@ data class SavingsChallenge(
     val endDateTimestamp: Long,
     val isCustom: Boolean = false,
     val category: String = "Geral" // e.g., 52_WEEKS, COIN_JAR, EMERGENCY, CUSTOM
+)
+
+@Entity(tableName = "financial_notes")
+data class FinancialNote(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val title: String,
+    val content: String,
+    val dateTimestamp: Long = System.currentTimeMillis(),
+    val category: String = "Geral", // e.g., Planejamento, Lembretes, Idéias, Geral
+    val isPinned: Boolean = false
+)
+
+@Entity(tableName = "bills_to_pay")
+data class BillToPay(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val name: String,
+    val creditor: String,
+    val amount: Double,
+    val dueDateTimestamp: Long,
+    val status: String = "Pendente", // Pendente, Pago, Atrasado
+    val notes: String = ""
+)
+
+@Entity(tableName = "bills_to_receive")
+data class BillToReceive(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val debtor: String,
+    val amount: Double,
+    val dueDateTimestamp: Long,
+    val status: String = "Pendente", // Pendente, Recebido, Atrasado
+    val phone: String = "",
+    val notes: String = ""
+)
+
+@Entity(tableName = "custom_categories")
+data class CustomCategory(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val name: String,
+    val type: String, // INCOME or EXPENSE
+    val iconName: String = "Category",
+    val colorHex: String = "#3F51B5"
 )
 

@@ -89,6 +89,61 @@ interface FinanceDao {
 
     @Delete
     suspend fun deleteChallenge(challenge: SavingsChallenge)
+
+    // --- Financial Notes ---
+    @Query("SELECT * FROM financial_notes ORDER BY isPinned DESC, dateTimestamp DESC")
+    fun getAllNotes(): Flow<List<FinancialNote>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNote(note: FinancialNote)
+
+    @Update
+    suspend fun updateNote(note: FinancialNote)
+
+    @Delete
+    suspend fun deleteNote(note: FinancialNote)
+
+    @Query("DELETE FROM financial_notes WHERE id = :id")
+    suspend fun deleteNoteById(id: Int)
+
+    // --- Bills To Pay ---
+    @Query("SELECT * FROM bills_to_pay ORDER BY dueDateTimestamp ASC")
+    fun getAllBillsToPay(): Flow<List<BillToPay>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBillToPay(bill: BillToPay)
+
+    @Update
+    suspend fun updateBillToPay(bill: BillToPay)
+
+    @Delete
+    suspend fun deleteBillToPay(bill: BillToPay)
+
+    // --- Bills To Receive ---
+    @Query("SELECT * FROM bills_to_receive ORDER BY dueDateTimestamp ASC")
+    fun getAllBillsToReceive(): Flow<List<BillToReceive>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBillToReceive(bill: BillToReceive)
+
+    @Update
+    suspend fun updateBillToReceive(bill: BillToReceive)
+
+    @Delete
+    suspend fun deleteBillToReceive(bill: BillToReceive)
+
+    // --- Custom Categories ---
+    @Query("SELECT * FROM custom_categories ORDER BY id ASC")
+    fun getAllCategories(): Flow<List<CustomCategory>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCategory(category: CustomCategory)
+
+    @Update
+    suspend fun updateCategory(category: CustomCategory)
+
+    @Delete
+    suspend fun deleteCategory(category: CustomCategory)
 }
 
 @Database(
@@ -98,9 +153,13 @@ interface FinanceDao {
         CreditCard::class,
         InvestmentAsset::class,
         FinancialGoal::class,
-        SavingsChallenge::class
+        SavingsChallenge::class,
+        FinancialNote::class,
+        BillToPay::class,
+        BillToReceive::class,
+        CustomCategory::class
     ],
-    version = 2,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

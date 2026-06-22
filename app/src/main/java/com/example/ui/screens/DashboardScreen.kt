@@ -10,6 +10,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -27,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.viewmodel.FinanceViewModel
+import com.example.data.model.FinancialNote
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -41,6 +47,21 @@ fun DashboardScreen(
     val transactionsState by viewModel.transactions.collectAsState()
     val investmentsState by viewModel.investments.collectAsState()
     val goalsState by viewModel.goals.collectAsState()
+    val notesState by viewModel.notes.collectAsState()
+
+    var showGoalsManager by remember { mutableStateOf(false) }
+    var editingGoal by remember { mutableStateOf<com.example.data.model.FinancialGoal?>(null) }
+    var showDeleteConfirmGoal by remember { mutableStateOf<com.example.data.model.FinancialGoal?>(null) }
+    var showContributeGoal by remember { mutableStateOf<com.example.data.model.FinancialGoal?>(null) }
+    
+    var goalTitle by remember { mutableStateOf("") }
+    var goalTarget by remember { mutableStateOf("") }
+    var goalCurrent by remember { mutableStateOf("") }
+    var goalMonths by remember { mutableStateOf("") }
+    var goalCategory by remember { mutableStateOf("SHORT_TERM") }
+    var goalSearchQuery by remember { mutableStateOf("") }
+    var goalSelectedFilter by remember { mutableStateOf("ALL") }
+    var goalContributeValue by remember { mutableStateOf("") }
 
     // Calculations
     val totalAccountBalance = accountsState.sumOf { it.balance }
@@ -127,7 +148,11 @@ fun DashboardScreen(
                         ) {
                             DashboardGoalsSection(
                                 viewModel = viewModel,
-                                goalsState = goalsState
+                                goalsState = goalsState,
+                                onManageGoals = { showGoalsManager = true }
+                            )
+                            DashboardNotesSection(
+                                notes = notesState
                             )
                             DashboardPromoCard(onNavigateToChallenges = onNavigateToChallenges)
                         }
@@ -162,7 +187,13 @@ fun DashboardScreen(
                 item {
                     DashboardGoalsSection(
                         viewModel = viewModel,
-                        goalsState = goalsState
+                        goalsState = goalsState,
+                        onManageGoals = { showGoalsManager = true }
+                    )
+                }
+                item {
+                    DashboardNotesSection(
+                        notes = notesState
                     )
                 }
                 item {
@@ -173,6 +204,317 @@ fun DashboardScreen(
             item {
                 Spacer(modifier = Modifier.height(72.dp)) // padding safe area for navigation components
             }
+        }
+
+        // --- Goals CRUD Manager Overlay Dialogs ---
+        if (showGoalsManager) {
+            AlertDialog(
+                onDismissRequest = { showGoalsManager = false },
+                title = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Gerenciador de Metas", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        IconButton(onClick = { showGoalsManager = false }) {
+                            Icon(imageVector = Icons.Default.Close, contentDescription = "Fechar")
+                        }
+                    }
+                },
+                text = {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 480.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Search bar and Category Filter Chips
+                        OutlinedTextField(
+                            value = goalSearchQuery,
+                            onValueChange = { goalSearchQuery = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Buscar meta...") },
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") }
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf(
+                                "ALL" to "Todas",
+                                "SHORT_TERM" to "Curto Prazo",
+                                "MEDIUM_TERM" to "Médio Prazo",
+                                "LONG_TERM" to "Longo Prazo"
+                            ).forEach { (filt, label) ->
+                                FilterChip(
+                                    selected = goalSelectedFilter == filt,
+                                    onClick = { goalSelectedFilter = filt },
+                                    label = { Text(label) }
+                                )
+                            }
+                        }
+
+                        Divider()
+
+                        // Section to Add / Edit form
+                        val isGoalEdit = editingGoal != null
+                        Text(
+                            text = if (isGoalEdit) "Editar Meta Existente" else "Criar Nova Meta Financeira",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleSmall
+                        )
+
+                        OutlinedTextField(
+                            value = goalTitle,
+                            onValueChange = { goalTitle = it },
+                            label = { Text("Nome da Meta (Ex: Carro Novo)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = goalTarget,
+                                onValueChange = { goalTarget = it },
+                                label = { Text("Alvo (R$)") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = goalCurrent,
+                                onValueChange = { goalCurrent = it },
+                                label = { Text("Atual (R$)") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = goalMonths,
+                                onValueChange = { goalMonths = it },
+                                label = { Text("Prazo (Meses)") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Categoria", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                Row(
+                                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    listOf(
+                                        "SHORT_TERM" to "Curto",
+                                        "MEDIUM_TERM" to "Médio",
+                                        "LONG_TERM" to "Longo"
+                                    ).forEach { (cat, label) ->
+                                        FilterChip(
+                                            selected = goalCategory == cat,
+                                            onClick = { goalCategory = cat },
+                                            label = { Text(label) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                val target = goalTarget.replace(",", ".").toDoubleOrNull() ?: 0.0
+                                val current = goalCurrent.replace(",", ".").toDoubleOrNull() ?: 0.0
+                                val mths = goalMonths.toIntOrNull() ?: 12
+                                if (goalTitle.isNotEmpty() && target > 0.0) {
+                                    if (isGoalEdit && editingGoal != null) {
+                                        val updated = editingGoal!!.copy(
+                                            title = goalTitle,
+                                            targetAmount = target,
+                                            currentAmount = current,
+                                            category = goalCategory
+                                        )
+                                        viewModel.updateGoal(updated)
+                                    } else {
+                                        viewModel.addGoal(goalTitle, target, current, mths, goalCategory)
+                                    }
+                                    goalTitle = ""
+                                    goalTarget = ""
+                                    goalCurrent = ""
+                                    goalMonths = "12"
+                                    editingGoal = null
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(if (isGoalEdit) "Atualizar Meta" else "Gravar Meta")
+                        }
+
+                        if (isGoalEdit) {
+                            TextButton(
+                                onClick = {
+                                    editingGoal = null
+                                    goalTitle = ""
+                                    goalTarget = ""
+                                    goalCurrent = ""
+                                    goalMonths = "12"
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Cancelar Edição", color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+
+                        Divider()
+
+                        Text(
+                            text = "Metas Cadastradas",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleSmall
+                        )
+
+                        val filteredGoals = goalsState.filter {
+                            (goalSelectedFilter == "ALL" || it.category == goalSelectedFilter) &&
+                            (goalSearchQuery.isEmpty() || it.title.contains(goalSearchQuery, ignoreCase = true))
+                        }
+
+                        if (filteredGoals.isEmpty()) {
+                            Text("Nenhuma meta cadastrada ou correspondente.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else {
+                            filteredGoals.forEach { g ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                                ) {
+                                    Column(modifier = Modifier.padding(10.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(g.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                IconButton(
+                                                    modifier = Modifier.size(32.dp),
+                                                    onClick = {
+                                                        showContributeGoal = g
+                                                        goalContributeValue = ""
+                                                    }
+                                                ) {
+                                                    Icon(imageVector = Icons.Default.Add, contentDescription = "Contribuir", tint = Color(0xFF2E7D32), modifier = Modifier.size(18.dp))
+                                                }
+                                                IconButton(
+                                                    modifier = Modifier.size(32.dp),
+                                                    onClick = {
+                                                        editingGoal = g
+                                                        goalTitle = g.title
+                                                        goalTarget = g.targetAmount.toString()
+                                                        goalCurrent = g.currentAmount.toString()
+                                                        goalMonths = "12"
+                                                        goalCategory = g.category
+                                                    }
+                                                ) {
+                                                    Icon(imageVector = Icons.Default.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                                }
+                                                IconButton(
+                                                    modifier = Modifier.size(32.dp),
+                                                    onClick = { showDeleteConfirmGoal = g }
+                                                ) {
+                                                    Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = "Excluir", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                                                }
+                                            }
+                                        }
+                                        val progress = (g.currentAmount / g.targetAmount).coerceIn(0.0..1.0).toFloat()
+                                        LinearProgressIndicator(
+                                            progress = progress,
+                                            modifier = Modifier.fillMaxWidth().height(6.dp),
+                                            color = MaterialTheme.colorScheme.primary,
+                                            trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+                                        )
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text("${viewModel.formatMoney(g.currentAmount)} / ${viewModel.formatMoney(g.targetAmount)}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text("${(progress * 100).toInt()}%", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {}
+            )
+        }
+
+        if (showDeleteConfirmGoal != null) {
+            val targetGoal = showDeleteConfirmGoal!!
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirmGoal = null },
+                title = { Text("Confirmar Exclusão de Meta", fontWeight = FontWeight.Bold) },
+                text = { Text("Deseja realmente excluir permanentemente a meta '${targetGoal.title}'? Essa ação não pode ser desfeita.") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.deleteGoal(targetGoal)
+                            showDeleteConfirmGoal = null
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Excluir")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirmGoal = null }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
+
+        if (showContributeGoal != null) {
+            val targetGoal = showContributeGoal!!
+            AlertDialog(
+                onDismissRequest = { showContributeGoal = null },
+                title = { Text("Contribuir para Meta", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Adicione saldo para atingir seu objetivo '${targetGoal.title}':")
+                        OutlinedTextField(
+                            value = goalContributeValue,
+                            onValueChange = { goalContributeValue = it },
+                            label = { Text("Valor (R$)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val value = goalContributeValue.replace(",", ".").toDoubleOrNull() ?: 0.0
+                            if (value > 0.0) {
+                                viewModel.contributeToGoal(targetGoal.id, value)
+                                showContributeGoal = null
+                            }
+                        }
+                    ) {
+                        Text("Contribuir")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showContributeGoal = null }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
         }
     }
 }
@@ -793,7 +1135,8 @@ fun DashboardChartCard(viewModel: FinanceViewModel) {
 @Composable
 fun DashboardGoalsSection(
     viewModel: FinanceViewModel,
-    goalsState: List<com.example.data.model.FinancialGoal>
+    goalsState: List<com.example.data.model.FinancialGoal>,
+    onManageGoals: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -812,7 +1155,8 @@ fun DashboardGoalsSection(
             Text(
                 text = "Ver Todas",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable { onManageGoals() }
             )
         }
 
@@ -949,6 +1293,94 @@ fun DashboardPromoCard(onNavigateToChallenges: () -> Unit) {
                     contentDescription = "Ir para desafios",
                     tint = MaterialTheme.colorScheme.onPrimary
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun DashboardNotesSection(
+    notes: List<FinancialNote>
+) {
+    val pinnedNotes = notes.filter { it.isPinned }
+    if (pinnedNotes.isEmpty()) return
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.PushPin,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "Lembretes & Planejamentos",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+
+        pinnedNotes.take(2).forEach { note ->
+            val catColor = when (note.category) {
+                "Planejamento" -> Color(0xFF4CAF50)
+                "Lembrete" -> Color(0xFFFF9800)
+                "Compras" -> Color(0xFFE91E63)
+                "Ideias" -> Color(0xFF9C27B0)
+                "Investimentos" -> Color(0xFF3F51B5)
+                else -> MaterialTheme.colorScheme.secondary
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = note.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Box(
+                            modifier = Modifier
+                                .background(catColor.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = note.category,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = catColor
+                            )
+                        }
+                    }
+                    Text(
+                        text = note.content,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
     }

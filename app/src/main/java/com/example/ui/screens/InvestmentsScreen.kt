@@ -41,6 +41,8 @@ fun InvestmentsScreen(viewModel: FinanceViewModel) {
     val investmentsState by viewModel.investments.collectAsState()
 
     var showAddAssetDialog by remember { mutableStateOf(false) }
+    var editingAsset by remember { mutableStateOf<com.example.data.model.InvestmentAsset?>(null) }
+    var showDeleteConfirmAsset by remember { mutableStateOf<com.example.data.model.InvestmentAsset?>(null) }
     var activeSubTab by remember { mutableStateOf("PORTFOLIO") } // PORTFOLIO, RETIREMENT, FINANCING, JUR_COMPOSTOS
 
     // Asset positioning forms
@@ -255,14 +257,34 @@ fun InvestmentsScreen(viewModel: FinanceViewModel) {
                                     fontWeight = FontWeight.Bold
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Icon(
-                                    imageVector = Icons.Default.DeleteOutline,
-                                    contentDescription = "Remover",
-                                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                                    modifier = Modifier
-                                        .size(18.dp)
-                                        .clickable { viewModel.deleteInvestment(asset) }
-                                )
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Editar",
+                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .clickable {
+                                                editingAsset = asset
+                                                assetName = asset.name
+                                                assetCategory = asset.category
+                                                assetQty = asset.quantity.toString()
+                                                assetPurchasePrice = asset.purchasePrice.toString()
+                                                assetCurrentPrice = asset.currentPrice.toString()
+                                            }
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.DeleteOutline,
+                                        contentDescription = "Remover",
+                                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .clickable { showDeleteConfirmAsset = asset }
+                                    )
+                                }
                             }
                         }
                     }
@@ -566,11 +588,19 @@ fun InvestmentsScreen(viewModel: FinanceViewModel) {
         }
     }
 
-    // --- Create Asset Dialog ---
-    if (showAddAssetDialog) {
+    // --- Create / Edit Asset Dialog ---
+    if (showAddAssetDialog || editingAsset != null) {
+        val isEdit = editingAsset != null
         AlertDialog(
-            onDismissRequest = { showAddAssetDialog = false },
-            title = { Text("Nova Posição em Ativo", fontWeight = FontWeight.Bold) },
+            onDismissRequest = { 
+                showAddAssetDialog = false 
+                editingAsset = null
+                assetName = ""
+                assetQty = ""
+                assetPurchasePrice = ""
+                assetCurrentPrice = ""
+            },
+            title = { Text(if (isEdit) "Editar Posição em Ativo" else "Nova Posição em Ativo", fontWeight = FontWeight.Bold) },
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
@@ -636,12 +666,25 @@ fun InvestmentsScreen(viewModel: FinanceViewModel) {
                         val purchase = assetPurchasePrice.replace(",", ".").toDoubleOrNull() ?: 0.0
                         val current = assetCurrentPrice.replace(",", ".").toDoubleOrNull() ?: purchase
                         if (assetName.isNotEmpty() && qty > 0.0 && purchase > 0.0) {
-                            viewModel.addInvestment(assetName, assetCategory, qty, purchase, current)
+                            if (isEdit && editingAsset != null) {
+                                viewModel.updateInvestment(
+                                    editingAsset!!.copy(
+                                        name = assetName,
+                                        category = assetCategory,
+                                        quantity = qty,
+                                        purchasePrice = purchase,
+                                        currentPrice = current
+                                    )
+                                )
+                            } else {
+                                viewModel.addInvestment(assetName, assetCategory, qty, purchase, current)
+                            }
                             assetName = ""
                             assetQty = ""
                             assetPurchasePrice = ""
                             assetCurrentPrice = ""
                             showAddAssetDialog = false
+                            editingAsset = null
                         }
                     }
                 ) {
@@ -649,7 +692,44 @@ fun InvestmentsScreen(viewModel: FinanceViewModel) {
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAddAssetDialog = false }) {
+                TextButton(
+                    onClick = { 
+                        showAddAssetDialog = false 
+                        editingAsset = null
+                        assetName = ""
+                        assetQty = ""
+                        assetPurchasePrice = ""
+                        assetCurrentPrice = ""
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    // --- Delete Confirmation Dialog ---
+    if (showDeleteConfirmAsset != null) {
+        val asset = showDeleteConfirmAsset!!
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmAsset = null },
+            title = { Text("Confirmar Exclusão de Ativo", fontWeight = FontWeight.Bold) },
+            text = {
+                Text("Deseja realmente excluir permanentemente a posição no ativo ${asset.name}? Esta ação não pode ser desfeita.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteInvestment(asset)
+                        showDeleteConfirmAsset = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Excluir")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmAsset = null }) {
                     Text("Cancelar")
                 }
             }

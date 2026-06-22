@@ -35,7 +35,7 @@ import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.FinanceViewModel
 import com.example.ui.viewmodel.FinanceViewModelFactory
 
-class MainActivity : ComponentActivity() {
+class MainActivity : androidx.fragment.app.FragmentActivity() {
 
     // Lazy initialization of database and repository inside parent Activity
     private val database by lazy {
@@ -52,7 +52,17 @@ class MainActivity : ComponentActivity() {
 
     // Instantiation utilizing ViewModelProvider Factory
     private val financeViewModel: FinanceViewModel by viewModels {
-        FinanceViewModelFactory(repository)
+        FinanceViewModelFactory(application, repository)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        financeViewModel.checkInactivityLock()
+    }
+
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        financeViewModel.updateActivityTimestamp()
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -62,14 +72,36 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val isDarkTheme by financeViewModel.isDarkTheme.collectAsState()
+            val isScreenshotProtected by financeViewModel.isScreenshotProtected.collectAsState()
             
+            // Dynamic screenshot secure flag protection
+            LaunchedEffect(isScreenshotProtected) {
+                if (isScreenshotProtected) {
+                    window.setFlags(
+                        android.view.WindowManager.LayoutParams.FLAG_SECURE,
+                        android.view.WindowManager.LayoutParams.FLAG_SECURE
+                    )
+                } else {
+                    window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                }
+            }
+
             MyApplicationTheme(darkTheme = isDarkTheme) {
                 val isScreenLocked by financeViewModel.isScreenLocked.collectAsState()
-                val pinCode by financeViewModel.pinCode.collectAsState()
+                val isFirstAccess by financeViewModel.isFirstAccess.collectAsState()
 
-                if (pinCode.isNotEmpty() && isScreenLocked) {
-                    // Lock protection layer if pass PIN is set
-                    PinLockScreen(viewModel = financeViewModel)
+                if (isFirstAccess) {
+                    SetupWizardScreen(
+                        viewModel = financeViewModel,
+                        onComplete = {
+                            // Onboarding registration confirmed
+                        }
+                    )
+                } else if (isScreenLocked) {
+                    SecurityLockScreen(
+                        viewModel = financeViewModel,
+                        activity = this@MainActivity
+                    )
                 } else {
                     // Main app content
                     MainLayoutContainer(viewModel = financeViewModel)
@@ -83,9 +115,38 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainLayoutContainer(viewModel: FinanceViewModel) {
     var activeTab by remember { mutableStateOf(0) }
+    var sensitiveVerifiedTab by remember { mutableStateOf<Int?>(null) }
     var showSavingsChallengesScreen by remember { mutableStateOf(false) }
     val familyBudgetMode by viewModel.familyBudgetMode.collectAsState()
     val openFinanceConnected by viewModel.openFinanceConnected.collectAsState()
+    val authType by viewModel.authType.collectAsState()
+    val localCtx = androidx.compose.ui.platform.LocalContext.current
+    val hostActivity = localCtx as? androidx.fragment.app.FragmentActivity
+
+    @Composable
+    fun RenderSensitiveScreen(targetTab: Int, screenContent: @Composable () -> Unit) {
+        if (authType != "NONE" && sensitiveVerifiedTab != targetTab && hostActivity != null) {
+            val sectionName = when (targetTab) {
+                3 -> "Investimentos"
+                4 -> "Gênio Coach"
+                5 -> "Configurações de Segurança"
+                else -> "Área Restrita"
+            }
+            SensitiveLockInterceptionLayer(
+                viewModel = viewModel,
+                areaName = sectionName,
+                activity = hostActivity,
+                onSuccess = {
+                    sensitiveVerifiedTab = targetTab
+                },
+                onCancel = {
+                    activeTab = 0
+                }
+            )
+        } else {
+            screenContent()
+        }
+    }
 
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val isWideScreen = configuration.screenWidthDp >= 600
@@ -153,6 +214,13 @@ fun MainLayoutContainer(viewModel: FinanceViewModel) {
                         label = { Text("Config") },
                         modifier = Modifier.testTag("nav_settings")
                     )
+                    NavigationRailItem(
+                        selected = activeTab == 6,
+                        onClick = { activeTab = 6 },
+                        icon = { Icon(Icons.Default.StickyNote2, "Notas") },
+                        label = { Text("Notas") },
+                        modifier = Modifier.testTag("nav_notes")
+                    )
                 }
 
                 Scaffold(
@@ -200,15 +268,28 @@ fun MainLayoutContainer(viewModel: FinanceViewModel) {
                             .padding(innerPadding)
                     ) {
                         when (activeTab) {
-                            0 -> DashboardScreen(
-                                viewModel = viewModel,
-                                onNavigateToChallenges = { showSavingsChallengesScreen = true }
-                            )
-                            1 -> TransactionsScreen(viewModel = viewModel)
-                            2 -> AccountsScreen(viewModel = viewModel)
-                            3 -> InvestmentsScreen(viewModel = viewModel)
-                            4 -> AssistantScreen(viewModel = viewModel)
-                            5 -> SettingsScreen(viewModel = viewModel)
+                            0 -> {
+                                sensitiveVerifiedTab = null
+                                DashboardScreen(
+                                    viewModel = viewModel,
+                                    onNavigateToChallenges = { showSavingsChallengesScreen = true }
+                                )
+                            }
+                            1 -> {
+                                sensitiveVerifiedTab = null
+                                TransactionsScreen(viewModel = viewModel)
+                            }
+                            2 -> {
+                                sensitiveVerifiedTab = null
+                                AccountsScreen(viewModel = viewModel)
+                            }
+                            3 -> RenderSensitiveScreen(3) { InvestmentsScreen(viewModel = viewModel) }
+                            4 -> RenderSensitiveScreen(4) { AssistantScreen(viewModel = viewModel) }
+                            5 -> RenderSensitiveScreen(5) { SettingsScreen(viewModel = viewModel) }
+                            6 -> {
+                                sensitiveVerifiedTab = null
+                                NotesScreen(viewModel = viewModel)
+                            }
                         }
                     }
                 }
@@ -298,6 +379,13 @@ fun MainLayoutContainer(viewModel: FinanceViewModel) {
                             label = { Text("Config") },
                             modifier = Modifier.testTag("nav_settings")
                         )
+                        NavigationBarItem(
+                            selected = activeTab == 6,
+                            onClick = { activeTab = 6 },
+                            icon = { Icon(Icons.Default.StickyNote2, "Notas") },
+                            label = { Text("Notas") },
+                            modifier = Modifier.testTag("nav_notes")
+                        )
                     }
                 }
             ) { innerPadding ->
@@ -307,15 +395,28 @@ fun MainLayoutContainer(viewModel: FinanceViewModel) {
                         .padding(innerPadding)
                 ) {
                     when (activeTab) {
-                        0 -> DashboardScreen(
-                            viewModel = viewModel,
-                            onNavigateToChallenges = { showSavingsChallengesScreen = true }
-                        )
-                        1 -> TransactionsScreen(viewModel = viewModel)
-                        2 -> AccountsScreen(viewModel = viewModel)
-                        3 -> InvestmentsScreen(viewModel = viewModel)
-                        4 -> AssistantScreen(viewModel = viewModel)
-                        5 -> SettingsScreen(viewModel = viewModel)
+                        0 -> {
+                            sensitiveVerifiedTab = null
+                            DashboardScreen(
+                                viewModel = viewModel,
+                                onNavigateToChallenges = { showSavingsChallengesScreen = true }
+                            )
+                        }
+                        1 -> {
+                            sensitiveVerifiedTab = null
+                            TransactionsScreen(viewModel = viewModel)
+                        }
+                        2 -> {
+                            sensitiveVerifiedTab = null
+                            AccountsScreen(viewModel = viewModel)
+                        }
+                        3 -> RenderSensitiveScreen(3) { InvestmentsScreen(viewModel = viewModel) }
+                        4 -> RenderSensitiveScreen(4) { AssistantScreen(viewModel = viewModel) }
+                        5 -> RenderSensitiveScreen(5) { SettingsScreen(viewModel = viewModel) }
+                        6 -> {
+                            sensitiveVerifiedTab = null
+                            NotesScreen(viewModel = viewModel)
+                        }
                     }
                 }
             }

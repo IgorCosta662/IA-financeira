@@ -14,11 +14,19 @@ class FinanceRepository(private val financeDao: FinanceDao) {
     val investments: Flow<List<InvestmentAsset>> = financeDao.getAllInvestments()
     val goals: Flow<List<FinancialGoal>> = financeDao.getAllGoals()
     val challenges: Flow<List<SavingsChallenge>> = financeDao.getAllChallenges()
+    val notes: Flow<List<FinancialNote>> = financeDao.getAllNotes()
+    val billsToPay: Flow<List<BillToPay>> = financeDao.getAllBillsToPay()
+    val billsToReceive: Flow<List<BillToReceive>> = financeDao.getAllBillsToReceive()
+    val customCategories: Flow<List<CustomCategory>> = financeDao.getAllCategories()
 
     // --- Write Actions ---
     suspend fun insertAccount(account: FinanceAccount) = financeDao.insertAccount(account)
     suspend fun updateAccount(account: FinanceAccount) = financeDao.updateAccount(account)
     suspend fun deleteAccount(account: FinanceAccount) = financeDao.deleteAccount(account)
+
+    suspend fun insertCategory(category: CustomCategory) = financeDao.insertCategory(category)
+    suspend fun updateCategory(category: CustomCategory) = financeDao.updateCategory(category)
+    suspend fun deleteCategory(category: CustomCategory) = financeDao.deleteCategory(category)
 
     suspend fun insertTransaction(transaction: FinanceTransaction) = financeDao.insertTransaction(transaction)
     suspend fun updateTransaction(transaction: FinanceTransaction) = financeDao.updateTransaction(transaction)
@@ -41,8 +49,49 @@ class FinanceRepository(private val financeDao: FinanceDao) {
     suspend fun updateChallenge(challenge: SavingsChallenge) = financeDao.updateChallenge(challenge)
     suspend fun deleteChallenge(challenge: SavingsChallenge) = financeDao.deleteChallenge(challenge)
 
+    // --- Note Actions ---
+    suspend fun insertNote(note: FinancialNote) = financeDao.insertNote(note)
+    suspend fun updateNote(note: FinancialNote) = financeDao.updateNote(note)
+    suspend fun deleteNote(note: FinancialNote) = financeDao.deleteNote(note)
+    suspend fun deleteNoteById(id: Int) = financeDao.deleteNoteById(id)
+
+    // --- Bills To Pay actions ---
+    suspend fun insertBillToPay(bill: BillToPay) = financeDao.insertBillToPay(bill)
+    suspend fun updateBillToPay(bill: BillToPay) = financeDao.updateBillToPay(bill)
+    suspend fun deleteBillToPay(bill: BillToPay) = financeDao.deleteBillToPay(bill)
+
+    // --- Bills To Receive actions ---
+    suspend fun insertBillToReceive(bill: BillToReceive) = financeDao.insertBillToReceive(bill)
+    suspend fun updateBillToReceive(bill: BillToReceive) = financeDao.updateBillToReceive(bill)
+    suspend fun deleteBillToReceive(bill: BillToReceive) = financeDao.deleteBillToReceive(bill)
+
+
     // --- Seed Initial Mock Data if DB is Empty ---
     suspend fun seedDatabaseIfEmpty() {
+        // Seeding default categories
+        val existingCategories = financeDao.getAllCategories().firstOrNull()?.isEmpty() ?: true
+        if (existingCategories) {
+            val defaultCategories = listOf(
+                CustomCategory(name = "Salário", type = "INCOME", iconName = "Work", colorHex = "#4CAF50"),
+                CustomCategory(name = "Renda Extra", type = "INCOME", iconName = "AddCard", colorHex = "#009688"),
+                CustomCategory(name = "Comissões", type = "INCOME", iconName = "Percent", colorHex = "#3F51B5"),
+                CustomCategory(name = "Dividendos", type = "INCOME", iconName = "Analytics", colorHex = "#9C27B0"),
+                CustomCategory(name = "Outros", type = "INCOME", iconName = "Wallet", colorHex = "#607D8B"),
+                
+                CustomCategory(name = "Alimentação", type = "EXPENSE", iconName = "Restaurant", colorHex = "#E57373"),
+                CustomCategory(name = "Lazer", type = "EXPENSE", iconName = "SportsEsports", colorHex = "#FFB74D"),
+                CustomCategory(name = "Transporte", type = "EXPENSE", iconName = "DirectionsCar", colorHex = "#4FC3F7"),
+                CustomCategory(name = "Saúde", type = "EXPENSE", iconName = "LocalHospital", colorHex = "#F06292"),
+                CustomCategory(name = "Moradia", type = "EXPENSE", iconName = "Home", colorHex = "#7986CB"),
+                CustomCategory(name = "Assinaturas", type = "EXPENSE", iconName = "Subscriptions", colorHex = "#BA68C8"),
+                CustomCategory(name = "Impostos", type = "EXPENSE", iconName = "AccountBalanceWallet", colorHex = "#A1887F"),
+                CustomCategory(name = "Outros", type = "EXPENSE", iconName = "Wallet", colorHex = "#90A4AE")
+            )
+            for (cat in defaultCategories) {
+                financeDao.insertCategory(cat)
+            }
+        }
+
         // Check if accounts are empty
         val existingAccounts = financeDao.getAllAccounts().firstOrNull()?.isEmpty() ?: true
         if (existingAccounts) {
@@ -142,6 +191,80 @@ class FinanceRepository(private val financeDao: FinanceDao) {
             financeDao.insertChallenge(challenge1)
             financeDao.insertChallenge(challenge2)
             financeDao.insertChallenge(challenge3)
+
+            // Seed Financial Notes
+            val note1 = FinancialNote(
+                title = "💡 Estratégia de Poupança",
+                content = "Lembrete: Tente transferir 10% do salário logo no dia que receber para a NuConta. Pagar-se primeiro funciona melhor do que guardar o que sobra!",
+                category = "Planejamento",
+                isPinned = true
+            )
+            val note2 = FinancialNote(
+                title = "🛒 Próximas Compras Grandes",
+                content = "Pesquisar preços de ar-condicionado na Black Friday. Meta de valor: abaixo de R$ 2.000,00.",
+                category = "Compras",
+                isPinned = false
+            )
+            financeDao.insertNote(note1)
+            financeDao.insertNote(note2)
+
+            // Seed Bills To Pay
+            val bill1 = BillToPay(
+                name = "Internet Fibra",
+                creditor = "Vivo Banda Larga",
+                amount = 120.00,
+                dueDateTimestamp = now + 5 * dayMs,
+                status = "Pendente"
+            )
+            val bill2 = BillToPay(
+                name = "Aluguel Apartamento",
+                creditor = "Imobiliária Solar",
+                amount = 1500.00,
+                dueDateTimestamp = now + 10 * dayMs,
+                status = "Pendente"
+            )
+            val bill3 = BillToPay(
+                name = "Conta de Luz",
+                creditor = "Enel Distribuição",
+                amount = 180.00,
+                dueDateTimestamp = now - 2 * dayMs, // Overdue
+                status = "Pendente"
+            )
+            val bill4 = BillToPay(
+                name = "Mensalidade Academia",
+                creditor = "SmartFit Centro",
+                amount = 90.00,
+                dueDateTimestamp = now - 15 * dayMs,
+                status = "Pago"
+            )
+            financeDao.insertBillToPay(bill1)
+            financeDao.insertBillToPay(bill2)
+            financeDao.insertBillToPay(bill3)
+            financeDao.insertBillToPay(bill4)
+
+            // Seed Bills To Receive
+            val item1 = BillToReceive(
+                debtor = "Carlos (Freela Design)",
+                amount = 850.00,
+                dueDateTimestamp = now + 4 * dayMs,
+                status = "Pendente"
+            )
+            val item2 = BillToReceive(
+                debtor = "Igor (Venda Bicicleta)",
+                amount = 1200.00,
+                dueDateTimestamp = now - 3 * dayMs, // Overdue
+                status = "Pendente"
+            )
+            val item3 = BillToReceive(
+                debtor = "Empresa (Reembolso Viagem)",
+                amount = 320.00,
+                dueDateTimestamp = now + 8 * dayMs,
+                status = "Recebido"
+            )
+            financeDao.insertBillToReceive(item1)
+            financeDao.insertBillToReceive(item2)
+            financeDao.insertBillToReceive(item3)
         }
     }
+
 }
