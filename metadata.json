@@ -1,0 +1,6 @@
+{
+  "name": "Finança AI",
+  "description": "Aplicativo de Controle Financeiro Pessoal Inteligente com gráficos, metas, investimentos e assistente com inteligência artificial integrado.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
