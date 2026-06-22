@@ -144,6 +144,19 @@ interface FinanceDao {
 
     @Delete
     suspend fun deleteCategory(category: CustomCategory)
+
+    // --- Inventory Items ---
+    @Query("SELECT * FROM inventory_items ORDER BY name ASC")
+    fun getAllInventoryItems(): Flow<List<InventoryItem>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertInventoryItem(item: InventoryItem)
+
+    @Update
+    suspend fun updateInventoryItem(item: InventoryItem)
+
+    @Delete
+    suspend fun deleteInventoryItem(item: InventoryItem)
 }
 
 @Database(
@@ -157,9 +170,10 @@ interface FinanceDao {
         FinancialNote::class,
         BillToPay::class,
         BillToReceive::class,
-        CustomCategory::class
+        CustomCategory::class,
+        InventoryItem::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

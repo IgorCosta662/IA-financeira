@@ -150,6 +150,12 @@ class FinanceViewModel(application: Application, private val repository: Finance
         initialValue = emptyList()
     )
 
+    val inventoryItems = repository.inventoryItems.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
     // --- Access History Log Data Class ---
     data class AccessLog(
         val id: String = UUID.randomUUID().toString(),
@@ -221,6 +227,12 @@ class FinanceViewModel(application: Application, private val repository: Finance
 
     private val _recoveryEmail = MutableStateFlow("")
     val recoveryEmail: StateFlow<String> get() = _recoveryEmail
+
+    private val _userName = MutableStateFlow("Usuário")
+    val userName: StateFlow<String> get() = _userName
+
+    private val _userAvatarId = MutableStateFlow("avatar_1")
+    val userAvatarId: StateFlow<String> get() = _userAvatarId
 
     // --- SharedPreferences & AI Configuration States ---
     private val sharedPrefs = getApplication<Application>().getSharedPreferences("ai_settings_prefs", Context.MODE_PRIVATE)
@@ -475,6 +487,8 @@ class FinanceViewModel(application: Application, private val repository: Finance
         _hideBalances.value = sharedPrefs.getBoolean("hide_balances", false)
         _isScreenshotProtected.value = sharedPrefs.getBoolean("screenshot_protected", false)
         _recoveryEmail.value = sharedPrefs.getString("recovery_email", "suporte@financa.ai") ?: "suporte@financa.ai"
+        _userName.value = sharedPrefs.getString("user_name", "Usuário") ?: "Usuário"
+        _userAvatarId.value = sharedPrefs.getString("user_avatar_id", "avatar_1") ?: "avatar_1"
         
         updateScreenLockState()
         loadAccessLogs()
@@ -609,6 +623,16 @@ class FinanceViewModel(application: Application, private val repository: Finance
     fun setBiometricsEnabled(enabled: Boolean) {
         _isBiometricsEnabled.value = enabled
         sharedPrefs.edit().putBoolean("biometrics_enabled", enabled).apply()
+    }
+
+    fun setUserName(name: String) {
+        _userName.value = name
+        sharedPrefs.edit().putString("user_name", name).apply()
+    }
+
+    fun setUserAvatarId(avatarId: String) {
+        _userAvatarId.value = avatarId
+        sharedPrefs.edit().putString("user_avatar_id", avatarId).apply()
     }
 
     fun setFirstAccess(first: Boolean) {
@@ -798,10 +822,10 @@ class FinanceViewModel(application: Application, private val repository: Finance
     }
 
     // --- Bills To Pay CRUD ---
-    fun addBillToPay(name: String, creditor: String, amount: Double, dueDate: Long, status: String = "Pendente", notes: String = "") {
+    fun addBillToPay(name: String, creditor: String, amount: Double, dueDate: Long, status: String = "Pendente", notes: String = "", phone: String = "", debtDate: Long = System.currentTimeMillis()) {
         viewModelScope.launch {
             repository.insertBillToPay(
-                BillToPay(name = name, creditor = creditor, amount = amount, dueDateTimestamp = dueDate, status = status, notes = notes)
+                BillToPay(name = name, creditor = creditor, amount = amount, dueDateTimestamp = dueDate, status = status, notes = notes, phone = phone, debtDateTimestamp = debtDate)
             )
         }
     }
@@ -819,10 +843,10 @@ class FinanceViewModel(application: Application, private val repository: Finance
     }
 
     // --- Bills To Receive CRUD ---
-    fun addBillToReceive(debtor: String, amount: Double, dueDate: Long, status: String = "Pendente", phone: String = "", notes: String = "") {
+    fun addBillToReceive(debtor: String, amount: Double, dueDate: Long, status: String = "Pendente", phone: String = "", notes: String = "", loanDate: Long = System.currentTimeMillis()) {
         viewModelScope.launch {
             repository.insertBillToReceive(
-                BillToReceive(debtor = debtor, amount = amount, dueDateTimestamp = dueDate, status = status, phone = phone, notes = notes)
+                BillToReceive(debtor = debtor, amount = amount, dueDateTimestamp = dueDate, status = status, phone = phone, notes = notes, loanDateTimestamp = loanDate)
             )
         }
     }
@@ -836,6 +860,27 @@ class FinanceViewModel(application: Application, private val repository: Finance
     fun deleteBillToReceive(bill: BillToReceive) {
         viewModelScope.launch {
             repository.deleteBillToReceive(bill)
+        }
+    }
+
+    // --- Inventory Items CRUD ---
+    fun addInventoryItem(name: String, category: String, estimatedValue: Double, purchaseDate: Long, quantity: Int, notes: String = "", photoUri: String = "") {
+        viewModelScope.launch {
+            repository.insertInventoryItem(
+                InventoryItem(name = name, category = category, estimatedValue = estimatedValue, purchaseDateTimestamp = purchaseDate, quantity = quantity, notes = notes, photoUri = photoUri)
+            )
+        }
+    }
+
+    fun updateInventoryItem(item: InventoryItem) {
+        viewModelScope.launch {
+            repository.updateInventoryItem(item)
+        }
+    }
+
+    fun deleteInventoryItem(item: InventoryItem) {
+        viewModelScope.launch {
+            repository.deleteInventoryItem(item)
         }
     }
 

@@ -96,7 +96,9 @@ data class BillToPay(
     val amount: Double,
     val dueDateTimestamp: Long,
     val status: String = "Pendente", // Pendente, Pago, Atrasado
-    val notes: String = ""
+    val notes: String = "",
+    val phone: String = "",
+    val debtDateTimestamp: Long = System.currentTimeMillis()
 )
 
 @Entity(tableName = "bills_to_receive")
@@ -107,7 +109,20 @@ data class BillToReceive(
     val dueDateTimestamp: Long,
     val status: String = "Pendente", // Pendente, Recebido, Atrasado
     val phone: String = "",
-    val notes: String = ""
+    val notes: String = "",
+    val loanDateTimestamp: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "inventory_items")
+data class InventoryItem(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val name: String,
+    val category: String, // Notebook, Computador, Celular, Veículos, Móveis, Equipamentos, Coleções, Outros bens
+    val estimatedValue: Double,
+    val purchaseDateTimestamp: Long,
+    val quantity: Int,
+    val notes: String = "",
+    val photoUri: String = ""
 )
 
 @Entity(tableName = "custom_categories")
