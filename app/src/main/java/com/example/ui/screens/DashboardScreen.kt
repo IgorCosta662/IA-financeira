@@ -153,7 +153,7 @@ fun DashboardScreen(
         ) {
             // Welcome and Header
             item {
-                DashboardHeaderSection()
+                DashboardHeaderSection(viewModel = viewModel)
             }
 
             // Global Search Input
@@ -1711,7 +1711,32 @@ fun DashboardScreen(
 }
 
 @Composable
-fun DashboardHeaderSection() {
+fun DashboardHeaderSection(viewModel: FinanceViewModel) {
+    val userName by viewModel.userName.collectAsState()
+    val userAvatarId by viewModel.userAvatarId.collectAsState()
+
+    val avatarColor = when (userAvatarId) {
+        "avatar_1" -> Color(0xFF14B8A6) // Teal
+        "avatar_2" -> Color(0xFF8B5CF6) // Purple
+        "avatar_3" -> Color(0xFFF59E0B) // Amber
+        "avatar_4" -> Color(0xFFEC4899) // Pink
+        "avatar_5" -> Color(0xFF3B82F6) // Blue
+        "avatar_6" -> Color(0xFF10B981) // Emerald
+        else -> MaterialTheme.colorScheme.primary
+    }
+
+    val icon = when (userAvatarId) {
+        "avatar_1" -> Icons.Default.Person
+        "avatar_2" -> Icons.Default.Face
+        "avatar_3" -> Icons.Default.AccountCircle
+        "avatar_4" -> Icons.Default.Favorite
+        "avatar_5" -> Icons.Default.Star
+        "avatar_6" -> Icons.Default.Pets
+        else -> Icons.Default.Person
+    }
+
+    val shortName = userName.split(" ").firstOrNull() ?: userName
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1729,7 +1754,7 @@ fun DashboardHeaderSection() {
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "Olá, Igor Silva",
+                text = "Olá, $shortName!",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -1738,21 +1763,19 @@ fun DashboardHeaderSection() {
         
         Surface(
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer,
+            color = avatarColor,
             modifier = Modifier.size(48.dp),
             border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.background)
         ) {
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.primary)
+                modifier = Modifier.fillMaxSize()
             ) {
-                Text(
-                    text = "IS",
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium
+                Icon(
+                    imageVector = icon,
+                    contentDescription = "Profile Avatar",
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }

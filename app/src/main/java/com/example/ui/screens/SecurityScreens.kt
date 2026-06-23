@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -44,7 +45,12 @@ fun SetupWizardScreen(
     var step by remember { mutableStateOf(1) }
     var selectedAuthMethod by remember { mutableStateOf("PIN") } // "PIN" or "PASSWORD"
     
-    // Form Inputs
+    // Step 1 Form Inputs
+    var inputName by remember { mutableStateOf("") }
+    var selectedAvatar by remember { mutableStateOf("avatar_1") }
+    var selectedCurrency by remember { mutableStateOf("BRL") }
+
+    // Form Inputs (Security)
     var isPin4Digits by remember { mutableStateOf(true) } // true = 4 digits, false = 6 digits
     var inputPin by remember { mutableStateOf("") }
     var inputPinConfirm by remember { mutableStateOf("") }
@@ -96,13 +102,13 @@ fun SetupWizardScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Segurança • Passo $step de 4",
+                        text = "Boas-vindas • Passo $step de 5",
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                     LinearProgressIndicator(
-                        progress = { step / 4f },
+                        progress = { step / 5f },
                         modifier = Modifier
                             .width(100.dp)
                             .height(8.dp),
@@ -114,7 +120,163 @@ fun SetupWizardScreen(
 
                 when (step) {
                     1 -> {
-                        // Step 1: Welcome & Method Selection
+                        // Step 1: Profile Customization
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = "User avatar logo",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(64.dp)
+                        )
+
+                        Text(
+                            text = "Seja bem-vindo ao Finança AI!",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Text(
+                            text = "Por favor, insira seus dados básicos para configurar o seu perfil totalmente personalizado.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            textAlign = TextAlign.Center
+                        )
+
+                        OutlinedTextField(
+                            value = inputName,
+                            onValueChange = { inputName = it },
+                            label = { Text("Seu Nome ou Apelido") },
+                            placeholder = { Text("Ex: Igor") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().testTag("setup_name_input"),
+                            leadingIcon = { Icon(Icons.Default.Person, null) }
+                        )
+
+                        Text(
+                            text = "Escolha um Avatar:",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.align(Alignment.Start)
+                        )
+
+                        // Avatar Palette Selection
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val avatars = listOf(
+                                "avatar_1" to Color(0xFF14B8A6), // Teal
+                                "avatar_2" to Color(0xFF8B5CF6), // Purple
+                                "avatar_3" to Color(0xFFF59E0B), // Amber
+                                "avatar_4" to Color(0xFFEC4899), // Pink
+                                "avatar_5" to Color(0xFF3B82F6), // Blue
+                                "avatar_6" to Color(0xFF10B981)  // Emerald
+                            )
+                            avatars.forEach { (avId, color) ->
+                                val isSelected = selectedAvatar == avId
+                                val icon = when (avId) {
+                                    "avatar_1" -> Icons.Default.Person
+                                    "avatar_2" -> Icons.Default.Face
+                                    "avatar_3" -> Icons.Default.AccountCircle
+                                    "avatar_4" -> Icons.Default.Favorite
+                                    "avatar_5" -> Icons.Default.Star
+                                    "avatar_6" -> Icons.Default.Pets
+                                    else -> Icons.Default.Person
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(45.dp)
+                                        .clip(CircleShape)
+                                        .background(color)
+                                        .clickable { selectedAvatar = avId }
+                                        .border(
+                                            width = if (isSelected) 3.dp else 0.dp,
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                            shape = CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = avId,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Text(
+                            text = "Moeda Padrão de Exibição:",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.align(Alignment.Start)
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            val currencies = listOf(
+                                "BRL" to "R$ Real",
+                                "USD" to "$ Dólar",
+                                "EUR" to "€ Euro"
+                            )
+                            currencies.forEach { (code, name) ->
+                                val isSelected = selectedCurrency == code
+                                Card(
+                                    onClick = { selectedCurrency = code },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                    ),
+                                    border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(10.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(code, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                        Text(name.substringAfter(" "), style = MaterialTheme.typography.labelSmall)
+                                    }
+                                }
+                            }
+                        }
+
+                        if (validationError.isNotEmpty()) {
+                            Text(
+                                text = validationError,
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                if (inputName.isBlank()) {
+                                    validationError = "Por favor, insira o seu nome!"
+                                } else {
+                                    validationError = ""
+                                    viewModel.setUserName(inputName)
+                                    viewModel.setUserAvatarId(selectedAvatar)
+                                    viewModel.setCurrency(selectedCurrency)
+                                    step = 2
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .testTag("setup_wizard_step1_next")
+                        ) {
+                            Text("Continuar")
+                        }
+                    }
+
+                    2 -> {
+                        // Step 2: Welcome & Method Selection
                         Icon(
                             imageVector = Icons.Default.Shield,
                             contentDescription = "Shield logo",
@@ -130,7 +292,7 @@ fun SetupWizardScreen(
                         )
 
                         Text(
-                            text = "Bem-vindo ao assistente de segurança avançada do Finança AI. Configure seus métodos de autenticação para criptografar chaves de API e proteger suas finanças.",
+                            text = "Configure seus métodos de autenticação de segurança para criptografar chaves de API e proteger seu painel financeiro.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                             textAlign = TextAlign.Center
@@ -191,18 +353,28 @@ fun SetupWizardScreen(
                             }
                         }
 
-                        Button(
-                            onClick = { step = 2 },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            Text("Continuar")
+                            OutlinedButton(
+                                onClick = { step = 1 },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Voltar")
+                            }
+
+                            Button(
+                                onClick = { step = 3 },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Continuar")
+                            }
                         }
                     }
 
-                    2 -> {
-                        // Step 2: Set Credentials
+                    3 -> {
+                        // Step 3: Set Credentials
                         Icon(
                             imageVector = if (selectedAuthMethod == "PIN") Icons.Default.Pin else Icons.Default.Password,
                             contentDescription = "Lock logo",
@@ -311,7 +483,7 @@ fun SetupWizardScreen(
                             OutlinedButton(
                                 onClick = {
                                     validationError = ""
-                                    step = 1
+                                    step = 2
                                 },
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -328,7 +500,7 @@ fun SetupWizardScreen(
                                         } else if (inputPin != inputPinConfirm) {
                                             validationError = "Os PINs digitados não são iguais!"
                                         } else {
-                                            step = 3
+                                            step = 4
                                         }
                                     } else {
                                         if (inputPassword.length < 6) {
@@ -336,7 +508,7 @@ fun SetupWizardScreen(
                                         } else if (inputPassword != inputPasswordConfirm) {
                                             validationError = "As senhas digitadas não coincidem!"
                                         } else {
-                                            step = 3
+                                            step = 4
                                         }
                                     }
                                 },
@@ -347,8 +519,8 @@ fun SetupWizardScreen(
                         }
                     }
 
-                    3 -> {
-                        // Step 3: Biometrics
+                    4 -> {
+                        // Step 4: Biometrics
                         Icon(
                             imageVector = Icons.Default.Fingerprint,
                             contentDescription = "Fingerprint",
@@ -401,14 +573,14 @@ fun SetupWizardScreen(
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             OutlinedButton(
-                                onClick = { step = 2 },
+                                onClick = { step = 3 },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text("Voltar")
                             }
 
                             Button(
-                                onClick = { step = 4 },
+                                onClick = { step = 5 },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text("Avançar")
@@ -416,8 +588,8 @@ fun SetupWizardScreen(
                         }
                     }
 
-                    4 -> {
-                        // Step 4: Email Recovery & 2FA Setup
+                    5 -> {
+                        // Step 5: Email Recovery & 2FA Setup
                         Icon(
                             imageVector = Icons.Default.Email,
                             contentDescription = "Email setup",
@@ -510,7 +682,7 @@ fun SetupWizardScreen(
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             OutlinedButton(
-                                onClick = { step = 3 },
+                                onClick = { step = 4 },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text("Voltar")
@@ -526,8 +698,10 @@ fun SetupWizardScreen(
                                     // Complete Setup
                                     if (selectedAuthMethod == "PIN") {
                                         viewModel.setPin(inputPin)
+                                        viewModel.setAuthType("PIN")
                                     } else {
                                         viewModel.setPasswordValue(inputPassword)
+                                        viewModel.setAuthType("PASSWORD")
                                     }
                                     
                                     viewModel.setBiometricsEnabled(enableBiometrics)
@@ -535,6 +709,11 @@ fun SetupWizardScreen(
                                     viewModel.set2FAEnabled(enable2FA)
                                     viewModel.setTwoFactorType(selected2FAType)
                                     
+                                    // Confirming name/avatar/currency persist safely
+                                    viewModel.setUserName(inputName)
+                                    viewModel.setUserAvatarId(selectedAvatar)
+                                    viewModel.setCurrency(selectedCurrency)
+
                                     viewModel.setFirstAccess(false)
                                     viewModel.forceSetLocked(false)
                                     onComplete()

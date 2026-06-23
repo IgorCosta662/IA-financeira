@@ -4,27 +4,62 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z">
+
+    <!-- Subtle Drop Shadow for the main badge -->
+    <path
+        android:fillColor="#15000000"
+        android:pathData="M54,26.5 L78,30.5 C78,46.5 73.5,65.5 54.5,82.5 L54,83 L53.5,82.5 C34.5,65.5 30,46.5 30,30.5 Z" />
+
+    <!-- Main Shield Badge representing Financial Security -->
+    <path
+        android:strokeWidth="2.5"
+        android:strokeColor="#E2F1FF"
+        android:pathData="M54,25 L76,29 C76,45 71.5,64 54,80 C36.5,64 32,45 32,29 Z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:endX="85.84757"
-                android:endY="92.4963"
-                android:startX="42.9492"
-                android:startY="49.59793"
+                android:startX="54"
+                android:startY="25"
+                android:endX="54"
+                android:endY="80"
                 android:type="linear">
                 <item
-                    android:color="#44000000"
+                    android:color="#1A2D69AF"
                     android:offset="0.0" />
                 <item
-                    android:color="#00000000"
+                    android:color="#4D1E3A63"
                     android:offset="1.0" />
             </gradient>
         </aapt:attr>
     </path>
+
+    <!-- Upward-trending bold profit line (Line Graph) inside the safe area -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000" />
+        android:strokeWidth="4"
+        android:strokeColor="#00E5FF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M40,58 L48,50 L56,54 L66,41" />
+
+    <!-- Sleek Grid lines in the background of the shield / graph lines -->
+    <path
+        android:strokeWidth="0.8"
+        android:strokeColor="#FFFFFF"
+        android:strokeAlpha="0.15"
+        android:pathData="M37,42 L71,42 M35,52 L73,52 M37,62 L71,62" />
+
+    <!-- Sparkle 1 (Main AI Node, 4-point Diamond Star) at the graph peak -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M66,35 C66,37.5 67.5,39 70,39 C67.5,39 66,40.5 66,43 C66,40.5 64.5,39 62,39 C64.5,39 66,37.5 66,35 Z" />
+
+    <!-- Sparkle 2 (Secondary AI Node) at top left of shield -->
+    <path
+        android:fillColor="#A975FF"
+        android:pathData="M42,33 C42,34.5 43,35.5 44.5,35.5 C43,35.5 42,36.5 42,38 C42,36.5 41,35.5 39.5,35.5 C41,35.5 42,34.5 42,33 Z" />
+
+    <!-- Small Sparkle 3 near the center bottom for balanced look -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M54,68 C54,69 54.7,69.7 55.7,69.7 C54.7,69.7 54,70.4 54,71.4 C54,70.4 53.3,69.7 52.3,69.7 C53.3,69.7 54,69 54,68 Z" />
+
 </vector>

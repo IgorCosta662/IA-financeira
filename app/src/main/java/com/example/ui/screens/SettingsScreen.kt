@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -32,6 +35,8 @@ import com.example.ui.viewmodel.AnalysisRecord
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(viewModel: FinanceViewModel) {
+    val userName by viewModel.userName.collectAsState()
+    val userAvatarId by viewModel.userAvatarId.collectAsState()
     val currencyState by viewModel.currency.collectAsState()
     val isDarkThemeState by viewModel.isDarkTheme.collectAsState()
     val pinState by viewModel.pinCode.collectAsState()
@@ -154,6 +159,161 @@ Assinatura Spotify, 34.90, EXPENSE, Assinaturas
 
         Divider()
 
+        // --- SEÇÃO DE PERFIL DO USUÁRIO ---
+        Text("Meu Perfil", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+        Card(modifier = Modifier.fillMaxWidth().testTag("user_profile_card")) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                
+                // Avatar row & info
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val avatarColor = when (userAvatarId) {
+                        "avatar_1" -> Color(0xFF14B8A6) // Teal
+                        "avatar_2" -> Color(0xFF8B5CF6) // Purple
+                        "avatar_3" -> Color(0xFFF59E0B) // Amber
+                        "avatar_4" -> Color(0xFFEC4899) // Pink
+                        "avatar_5" -> Color(0xFF3B82F6) // Blue
+                        "avatar_6" -> Color(0xFF10B981) // Emerald
+                        else -> MaterialTheme.colorScheme.primary
+                    }
+
+                    val icon = when (userAvatarId) {
+                        "avatar_1" -> Icons.Default.Person
+                        "avatar_2" -> Icons.Default.Face
+                        "avatar_3" -> Icons.Default.AccountCircle
+                        "avatar_4" -> Icons.Default.Favorite
+                        "avatar_5" -> Icons.Default.Star
+                        "avatar_6" -> Icons.Default.Pets
+                        else -> Icons.Default.Person
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(avatarColor),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = "User Avatar Icon",
+                            tint = Color.White,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = userName,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Configurações de Conta e Moeda",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+
+                // Editable Name Text Field
+                OutlinedTextField(
+                    value = userName,
+                    onValueChange = { viewModel.setUserName(it) },
+                    label = { Text("Nome ou Apelido") },
+                    placeholder = { Text("Seu nome") },
+                    leadingIcon = { Icon(Icons.Default.Edit, null) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("settings_name_input_field")
+                )
+
+                // Selectable Avatars grid title
+                Text(
+                    text = "Foto de Perfil (Avatar):",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                // Row of Avatars selection
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val avatars = listOf(
+                        "avatar_1" to Color(0xFF14B8A6), // Teal
+                        "avatar_2" to Color(0xFF8B5CF6), // Purple
+                        "avatar_3" to Color(0xFFF59E0B), // Amber
+                        "avatar_4" to Color(0xFFEC4899), // Pink
+                        "avatar_5" to Color(0xFF3B82F6), // Blue
+                        "avatar_6" to Color(0xFF10B981)  // Emerald
+                    )
+                    avatars.forEach { (avId, color) ->
+                        val isSelected = userAvatarId == avId
+                        val iconOption = when (avId) {
+                            "avatar_1" -> Icons.Default.Person
+                            "avatar_2" -> Icons.Default.Face
+                            "avatar_3" -> Icons.Default.AccountCircle
+                            "avatar_4" -> Icons.Default.Favorite
+                            "avatar_5" -> Icons.Default.Star
+                            "avatar_6" -> Icons.Default.Pets
+                            else -> Icons.Default.Person
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(color)
+                                .clickable { viewModel.setUserAvatarId(avId) }
+                                .border(
+                                    width = if (isSelected) 3.dp else 0.dp,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = iconOption,
+                                contentDescription = avId,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+
+                Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+
+                // Default currency controls in standard Material form
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Moeda Preferencial", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("Configura o símbolo monetário global", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        listOf("BRL" to "R$", "USD" to "$", "EUR" to "€").forEach { (curr, sym) ->
+                            val selected = currencyState == curr
+                            FilterChip(
+                                selected = selected,
+                                onClick = { viewModel.setCurrency(curr) },
+                                label = { Text(sym) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         // Theme and Currency controls
         Text("Personalização", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
@@ -168,26 +328,6 @@ Assinatura Spotify, 34.90, EXPENSE, Assinaturas
                             checked = isDarkThemeState,
                             onCheckedChange = { viewModel.toggleTheme() }
                         )
-                    }
-                )
-
-                Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-
-                ListItem(
-                    headlineContent = { Text("Moeda Padrão") },
-                    supportingContent = { Text("Selecione sua localidade para formatação automática") },
-                    leadingContent = { Icon(Icons.Default.MonetizationOn, null) },
-                    trailingContent = {
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            listOf("BRL" to "R$", "USD" to "$", "EUR" to "€").forEach { (curr, sym) ->
-                                val selected = currencyState == curr
-                                FilterChip(
-                                    selected = selected,
-                                    onClick = { viewModel.setCurrency(curr) },
-                                    label = { Text(sym) }
-                                )
-                            }
-                        }
                     }
                 )
             }
