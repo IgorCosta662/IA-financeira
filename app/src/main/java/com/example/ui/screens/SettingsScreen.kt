@@ -683,120 +683,169 @@ Assinatura Spotify, 34.90, EXPENSE, Assinaturas
                 }
 
                 // API Key input field
-                if (selectedProvider != AiProvider.GOOGLE_DEFAULT) {
-                    Text(
-                        text = "Chave de API (Secret Key)",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    OutlinedTextField(
-                        value = apiKeyBuffer,
-                        onValueChange = { apiKeyBuffer = it },
-                        placeholder = { Text("Insira sua chave API de ${selectedProvider.displayName}") },
-                        label = { Text("Chave API Key") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        leadingIcon = { Icon(Icons.Default.VpnKey, null) },
-                        trailingIcon = {
-                            IconButton(onClick = { isApiKeyVisible = !isApiKeyVisible }) {
-                                Icon(
-                                    imageVector = if (isApiKeyVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                    contentDescription = "Visualizar chave"
-                                )
-                            }
-                        },
-                        visualTransformation = if (isApiKeyVisible) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
+                Text(
+                    text = "Chave de API (Secret Key)",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                OutlinedTextField(
+                    value = apiKeyBuffer,
+                    onValueChange = { apiKeyBuffer = it },
+                    placeholder = { Text("Insira sua chave API de ${selectedProvider.displayName}") },
+                    label = { Text("Chave API Key") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.VpnKey, null) },
+                    trailingIcon = {
+                        IconButton(onClick = { isApiKeyVisible = !isApiKeyVisible }) {
+                            Icon(
+                                imageVector = if (isApiKeyVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = "Visualizar chave"
+                            )
+                        }
+                    },
+                    visualTransformation = if (isApiKeyVisible) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    shape = RoundedCornerShape(12.dp)
+                )
 
-                    // Model override field
-                    Text(
-                        text = "Modelo de Linguagem (L.L.M.)",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold
-                    )
+                // Model override field
+                Text(
+                    text = "Modelo de Linguagem (L.L.M.)",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                var isModelDropdownExpanded by remember { mutableStateOf(false) }
+                val suggestedModels = remember(selectedProvider) {
+                    when (selectedProvider) {
+                        AiProvider.GOOGLE -> listOf(
+                            "gemini-3.5-flash",
+                            "gemini-2.5-pro",
+                            "gemini-2.5-flash",
+                            "gemini-1.5-flash",
+                            "gemini-1.5-pro"
+                        )
+                        AiProvider.OPENAI -> listOf(
+                            "gpt-4o-mini",
+                            "gpt-4o",
+                            "gpt-4-turbo",
+                            "o1-mini",
+                            "o3-mini"
+                        )
+                        AiProvider.NVIDIA -> listOf(
+                            "nvidia/llama-3.1-nemotron-70b-instruct",
+                            "meta/llama-3.1-8b-instruct",
+                            "meta/llama-3.1-70b-instruct",
+                            "meta/llama-3.1-405b-instruct",
+                            "mistralai/mixtral-8x22b-instruct-v0.1"
+                        )
+                        AiProvider.ANTHROPIC -> listOf(
+                            "claude-3-5-sonnet-latest",
+                            "claude-3-5-haiku-latest",
+                            "claude-3-opus-20240229"
+                        )
+                        AiProvider.XAI -> listOf(
+                            "grok-2-1212",
+                            "grok-2-vision-1212",
+                            "grok-beta"
+                        )
+                        else -> emptyList()
+                    }
+                }
+
+                Box(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
                         value = modelCustomBuffer,
-                        onValueChange = { modelCustomBuffer = it },
+                        onValueChange = { 
+                            modelCustomBuffer = it 
+                        },
                         placeholder = { Text("Ex: ${selectedProvider.defaultModel}") },
                         label = { Text("Modelo Selecionado") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Default.Code, null) },
+                        trailingIcon = {
+                            if (suggestedModels.isNotEmpty()) {
+                                IconButton(onClick = { isModelDropdownExpanded = !isModelDropdownExpanded }) {
+                                    Icon(
+                                        imageVector = if (isModelDropdownExpanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                                        contentDescription = "Ver modelos sugeridos"
+                                    )
+                                }
+                            }
+                        },
                         shape = RoundedCornerShape(12.dp)
                     )
 
-                    // If Custom, show URL input field
-                    if (selectedProvider == AiProvider.CUSTOM) {
-                        Text(
-                            text = "URL Base da API Customizada",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        OutlinedTextField(
-                            value = customUrlBuffer,
-                            onValueChange = { customUrlBuffer = it },
-                            placeholder = { Text("Ex: https://api.together.xyz/v1") },
-                            label = { Text("Base URL") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            leadingIcon = { Icon(Icons.Default.Link, null) },
-                            shape = RoundedCornerShape(12.dp)
-                        )
+                    if (suggestedModels.isNotEmpty()) {
+                        DropdownMenu(
+                            expanded = isModelDropdownExpanded,
+                            onDismissRequest = { isModelDropdownExpanded = false },
+                            modifier = Modifier.fillMaxWidth(0.9f)
+                        ) {
+                            suggestedModels.forEach { modelSuggestion ->
+                                DropdownMenuItem(
+                                    text = { Text(modelSuggestion) },
+                                    onClick = {
+                                        modelCustomBuffer = modelSuggestion
+                                        isModelDropdownExpanded = false
+                                    }
+                                )
+                            }
+                        }
                     }
+                }
 
-                    // Key management Buttons Row
-                    Row(
+                // If Custom, show URL input field
+                if (selectedProvider == AiProvider.CUSTOM) {
+                    Text(
+                        text = "URL Base da API Customizada",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    OutlinedTextField(
+                        value = customUrlBuffer,
+                        onValueChange = { customUrlBuffer = it },
+                        placeholder = { Text("Ex: https://api.together.xyz/v1") },
+                        label = { Text("Base URL") },
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Default.Link, null) },
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+
+                // Key management Buttons Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            viewModel.setProviderKey(selectedProvider, apiKeyBuffer)
+                            viewModel.setProviderModel(selectedProvider, modelCustomBuffer)
+                            if (selectedProvider == AiProvider.CUSTOM) {
+                                viewModel.setCustomUrl(customUrlBuffer)
+                            }
+                            actionFeedbackMessage = "Chave e Modelo salvos para ${selectedProvider.displayName}!"
+                        },
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Button(
-                            onClick = {
-                                viewModel.setProviderKey(selectedProvider, apiKeyBuffer)
-                                viewModel.setProviderModel(selectedProvider, modelCustomBuffer)
-                                if (selectedProvider == AiProvider.CUSTOM) {
-                                    viewModel.setCustomUrl(customUrlBuffer)
-                                }
-                                actionFeedbackMessage = "Chave e Modelo salvos para ${selectedProvider.displayName}!"
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Save, null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Salvar Chave", fontSize = 12.sp)
-                        }
-                        OutlinedButton(
-                            onClick = {
-                                viewModel.removeProviderKey(selectedProvider)
-                                apiKeyBuffer = ""
-                                actionFeedbackMessage = "Chave de ${selectedProvider.displayName} removida."
-                            },
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.DeleteForever, null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Remover", fontSize = 12.sp)
-                        }
+                        Icon(Icons.Default.Save, null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Salvar Chave", fontSize = 12.sp)
                     }
-                } else {
-                    // Google default notification
-                    Surface(
-                         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                         shape = RoundedCornerShape(12.dp),
-                         modifier = Modifier.fillMaxWidth()
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.removeProviderKey(selectedProvider)
+                            apiKeyBuffer = ""
+                            actionFeedbackMessage = "Chave de ${selectedProvider.displayName} removida."
+                        },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        modifier = Modifier.weight(1f)
                     ) {
-                         Row(
-                             modifier = Modifier.padding(12.dp),
-                             verticalAlignment = Alignment.CenterVertically
-                         ) {
-                             Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
-                             Spacer(modifier = Modifier.width(12.dp))
-                             Column {
-                                 Text("Google (Padrão do App) Selecionado", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                                 Text("O aplicativo faz chamadas gratuitas utilizando o modelo '${selectedProvider.defaultModel}'. Nenhuma configuração ou faturamento é necessário.", style = MaterialTheme.typography.bodySmall)
-                             }
-                         }
+                        Icon(Icons.Default.DeleteForever, null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Remover", fontSize = 12.sp)
                     }
                 }
 

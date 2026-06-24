@@ -290,9 +290,9 @@ class FinanceViewModel(application: Application, private val repository: Finance
 
     private val _selectedProvider = MutableStateFlow(
         try {
-            AiProvider.valueOf(sharedPrefs.getString("selected_provider", AiProvider.GOOGLE_DEFAULT.name) ?: AiProvider.GOOGLE_DEFAULT.name)
+            AiProvider.valueOf(sharedPrefs.getString("selected_provider", AiProvider.GOOGLE.name) ?: AiProvider.GOOGLE.name)
         } catch (e: Exception) {
-            AiProvider.GOOGLE_DEFAULT
+            AiProvider.GOOGLE
         }
     )
     val selectedProvider: StateFlow<AiProvider> get() = _selectedProvider

@@ -14,9 +14,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 enum class AiProvider(val displayName: String, val defaultModel: String, val defaultUrl: String) {
-    GOOGLE_DEFAULT("Google (Padrão do App)", "gemini-3.5-flash", "https://generativelanguage.googleapis.com/"),
-    GOOGLE_CUSTOM("Google Gemini (Chave Própria)", "gemini-3.5-flash", "https://generativelanguage.googleapis.com/"),
+    GOOGLE("Google Gemini", "gemini-3.5-flash", "https://generativelanguage.googleapis.com/"),
     OPENAI("OpenAI", "gpt-4o-mini", "https://api.openai.com/v1/"),
+    NVIDIA("NVIDIA NIM", "nvidia/llama-3.1-nemotron-70b-instruct", "https://integrate.api.nvidia.com/v1/"),
     ANTHROPIC("Anthropic Claude", "claude-3-5-sonnet-latest", "https://api.anthropic.com/v1/"),
     XAI("xAI Grok", "grok-2-1212", "https://api.x.ai/v1/"),
     CUSTOM("Outros (OpenAI Compatível)", "custom-model", "")
@@ -55,9 +55,6 @@ object MultiAiClient {
         model: String,
         customUrl: String = ""
     ): ConnectionStatus = withContext(Dispatchers.IO) {
-        if (provider == AiProvider.GOOGLE_DEFAULT) {
-            return@withContext ConnectionStatus.CONNECTED
-        }
         if (apiKey.isEmpty()) {
             return@withContext ConnectionStatus.NO_CONNECTION
         }
@@ -102,23 +99,14 @@ object MultiAiClient {
     ): String = withContext(Dispatchers.IO) {
         val inputTokens = estimateTokens(systemInstruction) + estimateTokens(prompt)
         
-        val actualApiKey = if (provider == AiProvider.GOOGLE_DEFAULT) {
-            com.example.BuildConfig.GEMINI_API_KEY
-        } else {
-            apiKey
-        }
-
-        if (actualApiKey.isEmpty() || actualApiKey == "MY_GEMINI_API_KEY") {
-            if (provider == AiProvider.GOOGLE_DEFAULT) {
-                return@withContext "Para conversar com o Assistente de IA, configure a sua chave GEMINI_API_KEY no painel de Secrets do AI Studio ou insira sua própria chave nas Configurações de IA."
-            }
+        if (apiKey.isEmpty() || apiKey == "MY_GEMINI_API_KEY") {
             return@withContext "Por favor, insira uma Chave de API válida para o provedor ${provider.displayName} nas Configurações de IA."
         }
 
         try {
             val responseText = executeRequest(
                 provider = provider,
-                apiKey = actualApiKey,
+                apiKey = apiKey,
                 model = model,
                 prompt = prompt,
                 systemInstruction = systemInstruction,
@@ -153,9 +141,9 @@ object MultiAiClient {
         var jsonBodyStr = ""
 
         when (provider) {
-            AiProvider.GOOGLE_DEFAULT, AiProvider.GOOGLE_CUSTOM -> {
+            AiProvider.GOOGLE -> {
                 val resolvedModel = model.ifEmpty { "gemini-3.5-flash" }
-                url = "${AiProvider.GOOGLE_DEFAULT.defaultUrl}v1beta/models/$resolvedModel:generateContent?key=$apiKey"
+                url = "${AiProvider.GOOGLE.defaultUrl}v1beta/models/$resolvedModel:generateContent?key=$apiKey"
                 
                 val reqJson = JSONObject().apply {
                     val contentsArr = JSONArray().apply {
@@ -185,16 +173,21 @@ object MultiAiClient {
                 requestBuilder.post(jsonBodyStr.toRequestBody(mediaTypeJson))
             }
 
-            AiProvider.OPENAI, AiProvider.XAI, AiProvider.CUSTOM -> {
+            AiProvider.OPENAI, AiProvider.NVIDIA, AiProvider.XAI, AiProvider.CUSTOM -> {
                 val baseUrl = when (provider) {
                     AiProvider.OPENAI -> AiProvider.OPENAI.defaultUrl
+                    AiProvider.NVIDIA -> AiProvider.NVIDIA.defaultUrl
                     AiProvider.XAI -> AiProvider.XAI.defaultUrl
                     else -> if (customUrl.endsWith("/")) customUrl else "$customUrl/"
                 }
 
                 url = "${baseUrl}chat/completions"
                 val resolvedModel = model.ifEmpty {
-                    if (provider == AiProvider.OPENAI) "gpt-4o-mini" else "grok-2-1212"
+                    when (provider) {
+                        AiProvider.OPENAI -> "gpt-4o-mini"
+                        AiProvider.NVIDIA -> "nvidia/llama-3.1-nemotron-70b-instruct"
+                        else -> "grok-2-1212"
+                    }
                 }
 
                 val reqJson = JSONObject().apply {
@@ -283,7 +276,7 @@ object MultiAiClient {
             // Parse success response
             return try {
                 when (provider) {
-                    AiProvider.GOOGLE_DEFAULT, AiProvider.GOOGLE_CUSTOM -> {
+                    AiProvider.GOOGLE -> {
                         val root = JSONObject(body)
                         root.getJSONArray("candidates")
                             .getJSONObject(0)
@@ -293,7 +286,7 @@ object MultiAiClient {
                             .getString("text")
                     }
 
-                    AiProvider.OPENAI, AiProvider.XAI, AiProvider.CUSTOM -> {
+                    AiProvider.OPENAI, AiProvider.NVIDIA, AiProvider.XAI, AiProvider.CUSTOM -> {
                         val root = JSONObject(body)
                         root.getJSONArray("choices")
                             .getJSONObject(0)
