@@ -761,30 +761,68 @@ class FinanceViewModel(application: Application, private val repository: Finance
         isRec: Boolean = false,
         totalInst: Int = 1,
         cardId: Int? = null,
-        receiptImg: String? = null
+        receiptImg: String? = null,
+        isPaid: Boolean = true
     ) {
         viewModelScope.launch {
-            // Insere a transação
-            repository.insertTransaction(
-                FinanceTransaction(
-                    title = title,
-                    amount = amount,
-                    type = type,
-                    category = category,
-                    subcategory = sub,
-                    dateTimestamp = System.currentTimeMillis(),
-                    accountId = accId,
-                    isRecurring = isRec,
-                    totalInstallments = totalInst,
-                    creditCardId = cardId,
-                    receiptImgUri = receiptImg
+            if (totalInst > 1) {
+                val instAmt = amount / totalInst
+                for (i in 1..totalInst) {
+                    val cal = java.util.Calendar.getInstance()
+                    cal.add(java.util.Calendar.MONTH, i - 1)
+                    repository.insertTransaction(
+                        FinanceTransaction(
+                            title = "$title (${String.format("%02d", i)}/${String.format("%02d", totalInst)})",
+                            amount = instAmt,
+                            type = type,
+                            category = category,
+                            subcategory = sub,
+                            dateTimestamp = cal.timeInMillis,
+                            accountId = accId,
+                            isRecurring = isRec,
+                            totalInstallments = totalInst,
+                            currentInstallment = i,
+                            creditCardId = cardId,
+                            receiptImgUri = receiptImg,
+                            isPaid = isPaid
+                        )
+                    )
+                    // Atualiza de forma simples o saldo da conta para cada parcela se estiver pago
+                    if (isPaid) {
+                        val account = accounts.value.find { it.id == accId }
+                        if (account != null) {
+                            val newBal = if (type == "INCOME") account.balance + instAmt else account.balance - instAmt
+                            repository.updateAccount(account.copy(balance = newBal))
+                        }
+                    }
+                }
+            } else {
+                // Insere a transação simples
+                repository.insertTransaction(
+                    FinanceTransaction(
+                        title = title,
+                        amount = amount,
+                        type = type,
+                        category = category,
+                        subcategory = sub,
+                        dateTimestamp = System.currentTimeMillis(),
+                        accountId = accId,
+                        isRecurring = isRec,
+                        totalInstallments = 1,
+                        currentInstallment = 1,
+                        creditCardId = cardId,
+                        receiptImgUri = receiptImg,
+                        isPaid = isPaid
+                    )
                 )
-            )
-            // Atualiza de forma simples o saldo da conta
-            val account = accounts.value.find { it.id == accId }
-            if (account != null) {
-                val newBal = if (type == "INCOME") account.balance + amount else account.balance - amount
-                repository.updateAccount(account.copy(balance = newBal))
+                // Atualiza de forma simples o saldo da conta se estiver pago
+                if (isPaid) {
+                    val account = accounts.value.find { it.id == accId }
+                    if (account != null) {
+                        val newBal = if (type == "INCOME") account.balance + amount else account.balance - amount
+                        repository.updateAccount(account.copy(balance = newBal))
+                    }
+                }
             }
         }
     }
@@ -795,14 +833,36 @@ class FinanceViewModel(application: Application, private val repository: Finance
         }
     }
 
+    fun toggleTransactionPaid(transaction: FinanceTransaction) {
+        viewModelScope.launch {
+            val newPaidState = !transaction.isPaid
+            repository.updateTransaction(transaction.copy(isPaid = newPaidState))
+            
+            // Só atualiza o saldo do banco de contas se NÃO for uma transação de cartão de crédito
+            if (transaction.creditCardId == null) {
+                val account = accounts.value.find { it.id == transaction.accountId }
+                if (account != null) {
+                    val diff = if (transaction.type == "INCOME") {
+                        if (newPaidState) transaction.amount else -transaction.amount
+                    } else {
+                        if (newPaidState) -transaction.amount else transaction.amount
+                    }
+                    repository.updateAccount(account.copy(balance = account.balance + diff))
+                }
+            }
+        }
+    }
+
     fun deleteTransaction(transaction: FinanceTransaction) {
         viewModelScope.launch {
             repository.deleteTransaction(transaction)
-            // Estorna do saldo da conta
-            val account = accounts.value.find { it.id == transaction.accountId }
-            if (account != null) {
-                val newBal = if (transaction.type == "INCOME") account.balance - transaction.amount else account.balance + transaction.amount
-                repository.updateAccount(account.copy(balance = newBal))
+            // Estorna do saldo da conta apenas se a transação estiver paga e não for do cartão
+            if (transaction.isPaid && transaction.creditCardId == null) {
+                val account = accounts.value.find { it.id == transaction.accountId }
+                if (account != null) {
+                    val newBal = if (transaction.type == "INCOME") account.balance - transaction.amount else account.balance + transaction.amount
+                    repository.updateAccount(account.copy(balance = newBal))
+                }
             }
         }
     }

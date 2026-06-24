@@ -117,6 +117,7 @@ fun MainLayoutContainer(viewModel: FinanceViewModel) {
     var activeTab by remember { mutableStateOf(0) }
     var sensitiveVerifiedTab by remember { mutableStateOf<Int?>(null) }
     var showSavingsChallengesScreen by remember { mutableStateOf(false) }
+    var showTravelPlannerScreen by remember { mutableStateOf(false) }
     val familyBudgetMode by viewModel.familyBudgetMode.collectAsState()
     val openFinanceConnected by viewModel.openFinanceConnected.collectAsState()
     val authType by viewModel.authType.collectAsState()
@@ -155,6 +156,11 @@ fun MainLayoutContainer(viewModel: FinanceViewModel) {
         SavingsChallengesScreen(
             viewModel = viewModel,
             onBack = { showSavingsChallengesScreen = false }
+        )
+    } else if (showTravelPlannerScreen) {
+        TravelPlannerScreen(
+            viewModel = viewModel,
+            onBack = { showTravelPlannerScreen = false }
         )
     } else {
         if (isWideScreen) {
@@ -273,7 +279,8 @@ fun MainLayoutContainer(viewModel: FinanceViewModel) {
                                 sensitiveVerifiedTab = null
                                 DashboardScreen(
                                     viewModel = viewModel,
-                                    onNavigateToChallenges = { showSavingsChallengesScreen = true }
+                                    onNavigateToChallenges = { showSavingsChallengesScreen = true },
+                                    onNavigateToTravelPlanner = { showTravelPlannerScreen = true }
                                 )
                             }
                             1 -> {
@@ -401,7 +408,8 @@ fun MainLayoutContainer(viewModel: FinanceViewModel) {
                             sensitiveVerifiedTab = null
                             DashboardScreen(
                                 viewModel = viewModel,
-                                onNavigateToChallenges = { showSavingsChallengesScreen = true }
+                                onNavigateToChallenges = { showSavingsChallengesScreen = true },
+                                onNavigateToTravelPlanner = { showTravelPlannerScreen = true }
                             )
                         }
                         1 -> {

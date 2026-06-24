@@ -31,6 +31,7 @@ import com.example.data.model.FinanceAccount
 import com.example.data.model.FinanceTransaction
 import com.example.ui.viewmodel.FinanceViewModel
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -45,6 +46,37 @@ fun TransactionsScreen(viewModel: FinanceViewModel) {
     var selectedFilterType by remember { mutableStateOf("ALL") } // ALL, INCOME, EXPENSE
     var selectedCategoryFilter by remember { mutableStateOf("Tudo") }
 
+    // Monthly Filter State
+    val monthOptions = remember {
+        val options = mutableListOf<Pair<String, Calendar?>>()
+        options.add("Geral (Todo Período)" to null)
+
+        val monthNames = arrayOf("Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez")
+
+        for (i in -4..4) {
+            val tempCal = Calendar.getInstance().apply {
+                add(Calendar.MONTH, i)
+            }
+            val label = if (i == 0) "Este Mês (${monthNames[tempCal.get(Calendar.MONTH)]}/${tempCal.get(Calendar.YEAR).toString().takeLast(2)})"
+                        else "${monthNames[tempCal.get(Calendar.MONTH)]}/${tempCal.get(Calendar.YEAR).toString().takeLast(2)}"
+            options.add(label to tempCal)
+        }
+        options
+    }
+
+    val initialMonthIndex = remember {
+        monthOptions.indexOfFirst { it.first.contains("Este Mês") }.coerceAtLeast(0)
+    }
+    var selectedMonthOptionIndex by remember { mutableStateOf(initialMonthIndex) }
+
+    val isSameMonthYear = remember {
+        { timestamp: Long, target: Calendar ->
+            val txCal = Calendar.getInstance().apply { timeInMillis = timestamp }
+            txCal.get(Calendar.YEAR) == target.get(Calendar.YEAR) &&
+            txCal.get(Calendar.MONTH) == target.get(Calendar.MONTH)
+        }
+    }
+
     // Dialog state
     var txTitle by remember { mutableStateOf("") }
     var txAmount by remember { mutableStateOf("") }
@@ -54,20 +86,30 @@ fun TransactionsScreen(viewModel: FinanceViewModel) {
     var txAccountId by remember { mutableStateOf(1) }
     var txIsRecurring by remember { mutableStateOf(false) }
     var txInstallments by remember { mutableStateOf("1") }
-    val txCardId by remember { mutableStateOf<Int?>(null) }
+    var txCardId by remember { mutableStateOf<Int?>(null) }
     var txMockAttachedFile by remember { mutableStateOf<String?>(null) }
+    var txIsPaid by remember { mutableStateOf(true) }
 
     // Populate categories dynamically based on type
     val incomeCategories = listOf("Salário", "Renda Extra", "Comissões", "Dividendos", "Outros")
     val expenseCategories = listOf("Alimentação", "Lazer", "Transporte", "Saúde", "Moradia", "Assinaturas", "Impostos", "Outros")
     val currentCategories = if (txType == "INCOME") incomeCategories else expenseCategories
 
+    val selectedOption = monthOptions.getOrNull(selectedMonthOptionIndex)
+    val targetMonthCal = selectedOption?.second
+
     // Run filters
     val filteredTransactions = txsState.filter {
         val matchesType = selectedFilterType == "ALL" || it.type == selectedFilterType
         val matchesCat = selectedCategoryFilter == "Tudo" || it.category == selectedCategoryFilter
-        matchesType && matchesCat
+        val matchesMonth = targetMonthCal == null || isSameMonthYear(it.dateTimestamp, targetMonthCal)
+        matchesType && matchesCat && matchesMonth
     }
+
+    val monthTxs = txsState.filter { targetMonthCal == null || isSameMonthYear(it.dateTimestamp, targetMonthCal) }
+    val monthIncomes = monthTxs.filter { it.type == "INCOME" }.sumOf { it.amount }
+    val monthExpenses = monthTxs.filter { it.type == "EXPENSE" }.sumOf { it.amount }
+    val monthBalance = monthIncomes - monthExpenses
 
     Box(
         modifier = Modifier.fillMaxSize().testTag("transactions_screen"),
@@ -97,7 +139,156 @@ fun TransactionsScreen(viewModel: FinanceViewModel) {
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // Month Filter Row
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items(monthOptions.size) { index ->
+                    val pair = monthOptions[index]
+                    val isSelected = selectedMonthOptionIndex == index
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { selectedMonthOptionIndex = index },
+                        label = { 
+                            Text(
+                                text = pair.first,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            ) 
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Monthly Summary Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = if (targetMonthCal == null) "RESUMO CONSOLIDADO (GERAL)" else "Gasto e Resumo do Mês",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                        letterSpacing = 1.sp
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Total Income Block
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.TrendingUp,
+                                    contentDescription = "Entradas",
+                                    tint = Color(0xFF4CAF50),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Receitas",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                                )
+                            }
+                            Text(
+                                text = viewModel.formatMoney(monthIncomes),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF4CAF50)
+                            )
+                        }
+
+                        // Vertical Divider
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(36.dp)
+                                .background(MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.15f))
+                        )
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        // Total Expense Block
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.TrendingDown,
+                                    contentDescription = "Saídas",
+                                    tint = Color(0xFFEF5350),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Despesas (Gasto)",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                                )
+                            }
+                            Text(
+                                text = viewModel.formatMoney(monthExpenses),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFEF5350)
+                            )
+                        }
+                    }
+
+                    // Divider
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.08f))
+                    )
+
+                    // Balance Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Saldo Líquido",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            text = viewModel.formatMoney(monthBalance),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (monthBalance >= 0.0) Color(0xFF4CAF50) else Color(0xFFEF5350)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Transaction Type filter chips
             Row(
@@ -188,6 +379,7 @@ fun TransactionsScreen(viewModel: FinanceViewModel) {
                 if (accountsState.isNotEmpty()) {
                     txAccountId = accountsState.first().id
                 }
+                txCardId = null
                 showAddDialog = true
             },
             modifier = Modifier
@@ -315,7 +507,7 @@ fun TransactionsScreen(viewModel: FinanceViewModel) {
                         )
 
                         // Linked Account selector
-                        Text("Conta Creditada/Debitada", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Text("Conta de Origem", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                         var expandedAccDropdown by remember { mutableStateOf(false) }
                         Box {
                             val activeAccountOpt = accountsState.find { it.id == txAccountId }
@@ -348,8 +540,49 @@ fun TransactionsScreen(viewModel: FinanceViewModel) {
                             }
                         }
 
-                        // Installments if Expense
+                        // Credit Card selector (if Expense)
                         if (txType == "EXPENSE") {
+                            Text("Pagar com Cartão de Crédito (Opcional)", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            var expandedCardDropdown by remember { mutableStateOf(false) }
+                            Box {
+                                val activeCardOpt = cardsState.find { it.id == txCardId }
+                                OutlinedButton(
+                                    onClick = { expandedCardDropdown = true },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(activeCardOpt?.name ?: "Nenhum (Débito/Dinheiro)")
+                                        Icon(Icons.Default.CreditCard, "Dropdown")
+                                    }
+                                }
+                                DropdownMenu(
+                                    expanded = expandedCardDropdown,
+                                    onDismissRequest = { expandedCardDropdown = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Nenhum (Débito/Dinheiro)") },
+                                        onClick = {
+                                            txCardId = null
+                                            expandedCardDropdown = false
+                                        }
+                                    )
+                                    cardsState.forEach { card ->
+                                        DropdownMenuItem(
+                                            text = { Text(card.name) },
+                                            onClick = {
+                                                txCardId = card.id
+                                                expandedCardDropdown = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Installments if Expense
                             OutlinedTextField(
                                 value = txInstallments,
                                 onValueChange = { txInstallments = it },
@@ -358,6 +591,29 @@ fun TransactionsScreen(viewModel: FinanceViewModel) {
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true
                             )
+
+                            val parsedAmount = txAmount.replace(",", ".").toDoubleOrNull() ?: 0.0
+                            val parsedInst = txInstallments.toIntOrNull() ?: 1
+                            if (parsedAmount > 0.0 && parsedInst > 1) {
+                                val instVal = parsedAmount / parsedInst
+                                val formattedInstVal = String.format(Locale.US, "%.2f", instVal).replace(".", ",")
+                                Text(
+                                    text = "A despesa será desdobrada em ${parsedInst} parcelas mensais de R$ $formattedInstVal cada.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        // Paid / Received status checkbox
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().clickable { txIsPaid = !txIsPaid }
+                        ) {
+                            Checkbox(checked = txIsPaid, onCheckedChange = { txIsPaid = it })
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (txType == "INCOME") "Já recebido" else "Já pago")
                         }
 
                         // Scheduled Recurrence checkbox
@@ -388,7 +644,7 @@ fun TransactionsScreen(viewModel: FinanceViewModel) {
                     Button(
                         onClick = {
                             val amt = txAmount.replace(",", ".").toDoubleOrNull() ?: 0.0
-                            val inst = txInstallments.toIntOrNull() ?: 1
+                            val inst = if (txType == "EXPENSE") (txInstallments.toIntOrNull() ?: 1) else 1
                             if (txTitle.isNotEmpty() && amt > 0.0) {
                                 viewModel.addTransaction(
                                     title = txTitle,
@@ -400,7 +656,8 @@ fun TransactionsScreen(viewModel: FinanceViewModel) {
                                     isRec = txIsRecurring,
                                     totalInst = inst,
                                     cardId = txCardId,
-                                    receiptImg = txMockAttachedFile
+                                    receiptImg = txMockAttachedFile,
+                                    isPaid = txIsPaid
                                 )
                                 // Reset and dismiss
                                 txTitle = ""
@@ -408,7 +665,9 @@ fun TransactionsScreen(viewModel: FinanceViewModel) {
                                 txSubcategory = ""
                                 txIsRecurring = false
                                 txInstallments = "1"
+                                txCardId = null
                                 txMockAttachedFile = null
+                                txIsPaid = true
                                 showAddDialog = false
                             }
                         },
@@ -471,6 +730,13 @@ fun TransactionItemRow(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.weight(1f)
             ) {
+                // Checkbox to mark as paid / unpaid
+                Checkbox(
+                    checked = transaction.isPaid,
+                    onCheckedChange = { viewModel.toggleTransactionPaid(transaction) },
+                    modifier = Modifier.padding(end = 4.dp).testTag("tx_paid_checkbox_${transaction.id}")
+                )
+
                 // Category badge icon
                 Surface(
                     shape = CircleShape,

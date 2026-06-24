@@ -44,6 +44,35 @@ fun AccountsScreen(viewModel: FinanceViewModel) {
     // Active sub-tab state (0 = Bancos & Cartões, 1 = Pagar, 2 = Receber)
     var activeSubTab by remember { mutableStateOf(0) }
 
+    // State for Consolidated Credit Card Monthly Invoice Selector
+    var selectedInvoiceOptionIndex by remember { mutableStateOf(1) } // Defaults to Index 1 (Este Mês)
+
+    val invoiceMonthOptions = remember {
+        val options = mutableListOf<Pair<String, Calendar?>>()
+        options.add("Geral (Acumulado)" to null)
+
+        val monthNames = arrayOf("Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez")
+
+        for (i in 0..5) {
+            val tempCal = Calendar.getInstance().apply {
+                add(Calendar.MONTH, i)
+            }
+            val monthLabel = if (i == 0) "Este Mês (${monthNames[tempCal.get(Calendar.MONTH)]}/${tempCal.get(Calendar.YEAR).toString().takeLast(2)})"
+                             else if (i == 1) "Próx. Mês (${monthNames[tempCal.get(Calendar.MONTH)]}/${tempCal.get(Calendar.YEAR).toString().takeLast(2)})"
+                             else "${monthNames[tempCal.get(Calendar.MONTH)]}/${tempCal.get(Calendar.YEAR).toString().takeLast(2)}"
+            options.add(monthLabel to tempCal)
+        }
+        options
+    }
+
+    val isSameMonthYear = remember {
+        { timestamp: Long, target: Calendar ->
+            val txCal = Calendar.getInstance().apply { timeInMillis = timestamp }
+            txCal.get(Calendar.YEAR) == target.get(Calendar.YEAR) &&
+            txCal.get(Calendar.MONTH) == target.get(Calendar.MONTH)
+        }
+    }
+
     // Date formatter
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
@@ -134,6 +163,7 @@ fun AccountsScreen(viewModel: FinanceViewModel) {
     var cardTxName by remember { mutableStateOf("") }
     var cardTxCategory by remember { mutableStateOf("Lazer") }
     var cardTxAmount by remember { mutableStateOf("") }
+    var cardTxInstallments by remember { mutableStateOf("1") }
 
     // Simulator states
     var simValue by remember { mutableStateOf("") }
@@ -479,6 +509,253 @@ fun AccountsScreen(viewModel: FinanceViewModel) {
                                 }
                             }
                         } else {
+                            // Consolidated Credit Cards Summary
+                            item {
+                                val selectedOption = invoiceMonthOptions.getOrNull(selectedInvoiceOptionIndex)
+                                val targetCal = selectedOption?.second
+
+                                val getCardInvoiceTotal = { cardId: Int ->
+                                    txsState.filter { tx ->
+                                        tx.creditCardId == cardId && (targetCal == null || isSameMonthYear(tx.dateTimestamp, targetCal))
+                                    }.sumOf { it.amount }
+                                }
+
+                                val totalConsolidatedInvoice = cardsState.sumOf { card ->
+                                    getCardInvoiceTotal(card.id)
+                                }
+                                val totalCombinedLimit = cardsState.sumOf { it.limitAmount }
+                                val totalAvailableLimit = (totalCombinedLimit - totalConsolidatedInvoice).coerceAtLeast(0.0)
+                                val overallUtilization = if (totalCombinedLimit > 0.0) (totalConsolidatedInvoice / totalCombinedLimit).coerceIn(0.0..1.0) else 0.0
+
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    shape = RoundedCornerShape(24.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.25f)
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f))
+                                ) {
+                                    Column(modifier = Modifier.padding(20.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.CreditCard,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.tertiary
+                                                )
+                                                Text(
+                                                    text = "Fatura Consolidada (Multicartões)",
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                                )
+                                            }
+                                            Box(
+                                                modifier = Modifier
+                                                    .background(MaterialTheme.colorScheme.tertiary, RoundedCornerShape(100.dp))
+                                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                                            ) {
+                                                Text(
+                                                    text = "${cardsState.size} " + if (cardsState.size == 1) "Cartão" else "Cartões",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.onTertiary
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(16.dp))
+
+                                        // Horizontal selector for Months
+                                        Text(
+                                            text = "Selecione o Mês de Referência:",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
+                                            modifier = Modifier.padding(bottom = 6.dp)
+                                        )
+
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .horizontalScroll(rememberScrollState())
+                                                .padding(bottom = 12.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            invoiceMonthOptions.forEachIndexed { index, pair ->
+                                                val isSelected = selectedInvoiceOptionIndex == index
+                                                FilterChip(
+                                                    selected = isSelected,
+                                                    onClick = { selectedInvoiceOptionIndex = index },
+                                                    label = { 
+                                                        Text(
+                                                            text = pair.first,
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                                        ) 
+                                                    },
+                                                    colors = FilterChipDefaults.filterChipColors(
+                                                        selectedContainerColor = MaterialTheme.colorScheme.tertiary,
+                                                        selectedLabelColor = MaterialTheme.colorScheme.onTertiary,
+                                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    ),
+                                                    border = if (isSelected) null else FilterChipDefaults.filterChipBorder(
+                                                        enabled = true,
+                                                        selected = false,
+                                                        borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                                                    )
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(4.dp))
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Column {
+                                                Text(
+                                                    text = if (selectedInvoiceOptionIndex == 0) "SOMA DE TODAS AS FATURAS" else "PREVISÃO DE FATURA CONSOLIDADA",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                                                )
+                                                Text(
+                                                    text = viewModel.formatMoney(totalConsolidatedInvoice),
+                                                    style = MaterialTheme.typography.headlineMedium,
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    color = MaterialTheme.colorScheme.tertiary
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column {
+                                                Text(
+                                                    text = "Limite Combinado Total",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Text(
+                                                    text = viewModel.formatMoney(totalCombinedLimit),
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                            Column(horizontalAlignment = Alignment.End) {
+                                                Text(
+                                                    text = "Limite Disponível Total",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Text(
+                                                    text = viewModel.formatMoney(totalAvailableLimit),
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF2E7D32)
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(12.dp))
+
+                                        LinearProgressIndicator(
+                                            progress = { overallUtilization.toFloat() },
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(8.dp),
+                                            color = if (overallUtilization > 0.8) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary,
+                                            trackColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
+                                        )
+
+                                        Spacer(modifier = Modifier.height(16.dp))
+
+                                        // Breakdown per card
+                                        Text(
+                                            text = "Participação por Cartão:",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
+                                        )
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            cardsState.forEach { card ->
+                                                val cardInvoice = getCardInvoiceTotal(card.id)
+                                                val sharePercent = if (totalConsolidatedInvoice > 0.0) (cardInvoice / totalConsolidatedInvoice) else 0.0
+                                                val cardColor = try {
+                                                    Color(android.graphics.Color.parseColor(card.colorHex))
+                                                } catch (e: Exception) {
+                                                    MaterialTheme.colorScheme.secondary
+                                                }
+
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .background(
+                                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                                            RoundedCornerShape(12.dp)
+                                                        )
+                                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                    ) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(12.dp)
+                                                                .background(cardColor, RoundedCornerShape(3.dp))
+                                                        )
+                                                        Text(
+                                                            text = card.name,
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            fontWeight = FontWeight.Medium,
+                                                            color = MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                    }
+                                                    Column(horizontalAlignment = Alignment.End) {
+                                                        Text(
+                                                            text = viewModel.formatMoney(cardInvoice),
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                        Text(
+                                                            text = "${String.format(Locale.US, "%.1f", sharePercent * 100)}% do total",
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
                             items(cardsState) { card ->
                                 val cardColor = try {
                                     Color(android.graphics.Color.parseColor(card.colorHex))
@@ -486,7 +763,11 @@ fun AccountsScreen(viewModel: FinanceViewModel) {
                                     Color(0xFF2A2A2A)
                                 }
 
-                                val invoiceTotal = txsState.filter { it.creditCardId == card.id }.sumOf { it.amount }
+                                val selectedOption = invoiceMonthOptions.getOrNull(selectedInvoiceOptionIndex)
+                                val targetCal = selectedOption?.second
+                                val invoiceTotal = txsState.filter { tx ->
+                                    tx.creditCardId == card.id && (targetCal == null || isSameMonthYear(tx.dateTimestamp, targetCal))
+                                }.sumOf { it.amount }
                                 val availableLimit = (card.limitAmount - invoiceTotal).coerceAtLeast(0.0)
                                 val utilizationPercent = (if (card.limitAmount > 0) invoiceTotal / card.limitAmount else 0.0).coerceIn(0.0..1.0).toFloat()
 
@@ -546,7 +827,7 @@ fun AccountsScreen(viewModel: FinanceViewModel) {
                                         ) {
                                             Column {
                                                 Text(
-                                                    text = "Fatura Atual",
+                                                    text = if (selectedInvoiceOptionIndex == 0) "Fatura Total" else "Fatura Prevista",
                                                     style = MaterialTheme.typography.labelSmall,
                                                     color = Color.White.copy(alpha = 0.6f)
                                                 )
@@ -1545,7 +1826,11 @@ fun AccountsScreen(viewModel: FinanceViewModel) {
     if (selectedCardForDetails != null) {
         val card = selectedCardForDetails!!
         val cardColor = try { Color(android.graphics.Color.parseColor(card.colorHex)) } catch (e: Exception) { Color(0xFF2A2A2A) }
-        val cardTxs = txsState.filter { it.creditCardId == card.id }
+        val selectedOption = invoiceMonthOptions.getOrNull(selectedInvoiceOptionIndex)
+        val targetCal = selectedOption?.second
+        val cardTxs = txsState.filter { tx ->
+            tx.creditCardId == card.id && (targetCal == null || isSameMonthYear(tx.dateTimestamp, targetCal))
+        }
         val totalSpent = cardTxs.sumOf { it.amount }
 
         AlertDialog(
@@ -1584,7 +1869,10 @@ fun AccountsScreen(viewModel: FinanceViewModel) {
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("Uso da Fatura", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    text = if (selectedInvoiceOptionIndex == 0) "Uso da Fatura (Total)" else "Fatura de ${selectedOption?.first}",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
                                 Text("${viewModel.formatMoney(totalSpent)} de ${viewModel.formatMoney(card.limitAmount)}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                             }
                             Spacer(modifier = Modifier.height(6.dp))
@@ -1693,9 +1981,19 @@ fun AccountsScreen(viewModel: FinanceViewModel) {
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(tx.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        Text("${tx.category} • ${dateFormatter.format(Date(tx.dateTimestamp))}", style = MaterialTheme.typography.labelSmall)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Checkbox(
+                                            checked = tx.isPaid,
+                                            onCheckedChange = { viewModel.toggleTransactionPaid(tx) },
+                                            modifier = Modifier.padding(end = 4.dp).testTag("card_tx_paid_checkbox_${tx.id}")
+                                        )
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(tx.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text("${tx.category} • ${dateFormatter.format(Date(tx.dateTimestamp))}", style = MaterialTheme.typography.labelSmall)
+                                        }
                                     }
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
@@ -1757,10 +2055,31 @@ fun AccountsScreen(viewModel: FinanceViewModel) {
                     OutlinedTextField(
                         value = cardTxAmount,
                         onValueChange = { cardTxAmount = it },
-                        label = { Text("Valor") },
+                        label = { Text("Valor Total (R$)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    OutlinedTextField(
+                        value = cardTxInstallments,
+                        onValueChange = { cardTxInstallments = it },
+                        label = { Text("Número de Parcelas") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    val parsedAmount = cardTxAmount.replace(",", ".").toDoubleOrNull() ?: 0.0
+                    val parsedInst = cardTxInstallments.toIntOrNull() ?: 1
+                    if (parsedAmount > 0.0 && parsedInst > 1) {
+                        val instVal = parsedAmount / parsedInst
+                        val formattedInstVal = String.format(Locale.US, "%.2f", instVal).replace(".", ",")
+                        Text(
+                            text = "Será parcelado em ${parsedInst}x de R$ $formattedInstVal por mês.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
 
                     Text("Categoria", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     Row(
@@ -1781,6 +2100,7 @@ fun AccountsScreen(viewModel: FinanceViewModel) {
                 Button(
                     onClick = {
                         val amt = cardTxAmount.replace(",", ".").toDoubleOrNull() ?: 0.0
+                        val inst = cardTxInstallments.toIntOrNull() ?: 1
                         if (cardTxName.isNotBlank() && amt > 0.0) {
                             // Find primary bank account to bind or use 1
                             val accId = accountsState.firstOrNull()?.id ?: 1
@@ -1791,10 +2111,12 @@ fun AccountsScreen(viewModel: FinanceViewModel) {
                                 category = cardTxCategory,
                                 sub = "Compra Cartão",
                                 accId = accId,
+                                totalInst = inst,
                                 cardId = card.id
                             )
                             cardTxName = ""
                             cardTxAmount = ""
+                            cardTxInstallments = "1"
                             showAddCardPurchaseDialog = null
                         }
                     }

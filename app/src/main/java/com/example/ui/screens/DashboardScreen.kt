@@ -43,7 +43,8 @@ import java.util.Calendar
 @Composable
 fun DashboardScreen(
     viewModel: FinanceViewModel,
-    onNavigateToChallenges: () -> Unit = {}
+    onNavigateToChallenges: () -> Unit = {},
+    onNavigateToTravelPlanner: () -> Unit = {}
 ) {
     val accountsState by viewModel.accounts.collectAsState()
     val transactionsState by viewModel.transactions.collectAsState()
@@ -271,6 +272,7 @@ fun DashboardScreen(
                                     notes = notesState
                                 )
                                 DashboardPromoCard(onNavigateToChallenges = onNavigateToChallenges)
+                                DashboardTravelPromoCard(onNavigateToTravelPlanner = onNavigateToTravelPlanner)
                             }
                         }
                     }
@@ -338,6 +340,9 @@ fun DashboardScreen(
                     }
                     item {
                         DashboardPromoCard(onNavigateToChallenges = onNavigateToChallenges)
+                    }
+                    item {
+                        DashboardTravelPromoCard(onNavigateToTravelPlanner = onNavigateToTravelPlanner)
                     }
                 }
             }
@@ -2558,6 +2563,57 @@ fun DashboardPromoCard(onNavigateToChallenges: () -> Unit) {
                     imageVector = Icons.Default.ArrowForward,
                     contentDescription = "Ir para desafios",
                     tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DashboardTravelPromoCard(onNavigateToTravelPlanner: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .clickable { onNavigateToTravelPlanner() },
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f))
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "PLANEJADOR DE VIAGENS ✈️",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Vai viajar ou parcelar?",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Simule o valor das parcelas e veja o impacto real mensal nas faturas do seu cartão com segurança!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                )
+            }
+            IconButton(
+                onClick = onNavigateToTravelPlanner,
+                colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.secondary)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowForward,
+                    contentDescription = "Ir para planejador",
+                    tint = MaterialTheme.colorScheme.onSecondary
                 )
             }
         }

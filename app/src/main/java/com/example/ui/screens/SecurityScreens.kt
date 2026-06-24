@@ -351,6 +351,27 @@ fun SetupWizardScreen(
                                     }
                                 }
                             }
+
+                            Card(
+                                onClick = { selectedAuthMethod = "NONE" },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (selectedAuthMethod == "NONE") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                ),
+                                border = if (selectedAuthMethod == "NONE") BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    Icon(Icons.Default.LockOpen, contentDescription = "None")
+                                    Column {
+                                        Text("Acesso Livre (Opcional / Sem Senha)", fontWeight = FontWeight.Bold)
+                                        Text("Abre o app diretamente. Menos seguro, mas rápido. Pode configurar depois.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                    }
+                                }
+                            }
                         }
 
                         Row(
@@ -365,7 +386,13 @@ fun SetupWizardScreen(
                             }
 
                             Button(
-                                onClick = { step = 3 },
+                                onClick = {
+                                    if (selectedAuthMethod == "NONE") {
+                                        step = 5 // Skip direct to Step 5
+                                    } else {
+                                        step = 3
+                                    }
+                                },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text("Continuar")
@@ -516,6 +543,15 @@ fun SetupWizardScreen(
                             ) {
                                 Text("Próximo")
                             }
+                        }
+
+                        TextButton(
+                            onClick = {
+                                selectedAuthMethod = "NONE"
+                                step = 5
+                            }
+                        ) {
+                            Text("Pular esta etapa (Entrar Sem Senha)")
                         }
                     }
 
@@ -682,7 +718,13 @@ fun SetupWizardScreen(
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             OutlinedButton(
-                                onClick = { step = 4 },
+                                onClick = {
+                                    if (selectedAuthMethod == "NONE") {
+                                        step = 2
+                                    } else {
+                                        step = 4
+                                    }
+                                },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text("Voltar")
@@ -690,8 +732,8 @@ fun SetupWizardScreen(
 
                             Button(
                                 onClick = {
-                                    if (backupEmail.isBlank() || !backupEmail.contains("@")) {
-                                        validationError = "Por favor, insira um e-mail válido!"
+                                    if (backupEmail.isNotBlank() && !backupEmail.contains("@")) {
+                                        validationError = "Por favor, insira um e-mail válido ou deixe em branco!"
                                         return@Button
                                     }
                                     
@@ -699,13 +741,17 @@ fun SetupWizardScreen(
                                     if (selectedAuthMethod == "PIN") {
                                         viewModel.setPin(inputPin)
                                         viewModel.setAuthType("PIN")
-                                    } else {
+                                    } else if (selectedAuthMethod == "PASSWORD") {
                                         viewModel.setPasswordValue(inputPassword)
                                         viewModel.setAuthType("PASSWORD")
+                                    } else {
+                                        viewModel.setPin("")
+                                        viewModel.setPasswordValue("")
+                                        viewModel.setAuthType("NONE")
                                     }
                                     
                                     viewModel.setBiometricsEnabled(enableBiometrics)
-                                    viewModel.setRecoveryEmail(backupEmail)
+                                    viewModel.setRecoveryEmail(backupEmail.ifBlank { "suporte@financa.ai" })
                                     viewModel.set2FAEnabled(enable2FA)
                                     viewModel.setTwoFactorType(selected2FAType)
                                     
