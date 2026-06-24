@@ -207,20 +207,6 @@ fun MainLayoutContainer(viewModel: FinanceViewModel) {
                         label = { Text("Gênio") },
                         modifier = Modifier.testTag("nav_genius")
                     )
-                    NavigationRailItem(
-                        selected = activeTab == 5,
-                        onClick = { activeTab = 5 },
-                        icon = { Icon(Icons.Default.Settings, "Configurações") },
-                        label = { Text("Config") },
-                        modifier = Modifier.testTag("nav_settings")
-                    )
-                    NavigationRailItem(
-                        selected = activeTab == 6,
-                        onClick = { activeTab = 6 },
-                        icon = { Icon(Icons.Default.StickyNote2, "Notas") },
-                        label = { Text("Notas") },
-                        modifier = Modifier.testTag("nav_notes")
-                    )
                 }
 
                 Scaffold(
@@ -254,10 +240,25 @@ fun MainLayoutContainer(viewModel: FinanceViewModel) {
                                     fontWeight = FontWeight.ExtraBold,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier
-                                        .padding(end = 16.dp)
                                         .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
                                         .padding(horizontal = 10.dp, vertical = 4.dp)
                                 )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(onClick = { activeTab = 6 }) {
+                                    Icon(
+                                        imageVector = Icons.Default.StickyNote2,
+                                        contentDescription = "Notas",
+                                        tint = if (activeTab == 6) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                IconButton(onClick = { activeTab = 5 }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Settings,
+                                        contentDescription = "Configurações",
+                                        tint = if (activeTab == 5) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
                             }
                         )
                     }
@@ -326,10 +327,25 @@ fun MainLayoutContainer(viewModel: FinanceViewModel) {
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier
-                                    .padding(end = 16.dp)
                                     .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            IconButton(onClick = { activeTab = 6 }) {
+                                Icon(
+                                    imageVector = Icons.Default.StickyNote2,
+                                    contentDescription = "Notas",
+                                    tint = if (activeTab == 6) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            IconButton(onClick = { activeTab = 5 }) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "Configurações",
+                                    tint = if (activeTab == 5) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
                         }
                     )
                 },
@@ -371,20 +387,6 @@ fun MainLayoutContainer(viewModel: FinanceViewModel) {
                             icon = { Icon(Icons.Default.AutoAwesome, "Gênio Coach") },
                             label = { Text("Gênio") },
                             modifier = Modifier.testTag("nav_genius")
-                        )
-                        NavigationBarItem(
-                            selected = activeTab == 5,
-                            onClick = { activeTab = 5 },
-                            icon = { Icon(Icons.Default.Settings, "Configurações") },
-                            label = { Text("Config") },
-                            modifier = Modifier.testTag("nav_settings")
-                        )
-                        NavigationBarItem(
-                            selected = activeTab == 6,
-                            onClick = { activeTab = 6 },
-                            icon = { Icon(Icons.Default.StickyNote2, "Notas") },
-                            label = { Text("Notas") },
-                            modifier = Modifier.testTag("nav_notes")
                         )
                     }
                 }

@@ -31,6 +31,11 @@ import com.example.ui.viewmodel.FinanceViewModel
 import com.example.data.api.AiProvider
 import com.example.data.api.ConnectionStatus
 import com.example.ui.viewmodel.AnalysisRecord
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import androidx.core.content.FileProvider
+import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,6 +106,7 @@ fun SettingsScreen(viewModel: FinanceViewModel) {
 
     // Import simulated statement states
     var rawImportText by remember { mutableStateOf("") }
+    var rawRestoreText by remember { mutableStateOf("") }
     var importStatusMessage by remember { mutableStateOf("") }
 
     // Mock statement templates
@@ -633,6 +639,8 @@ Assinatura Spotify, 34.90, EXPENSE, Assinaturas
             }
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
         // AI Settings Segment
         Text("Configurações de Inteligência Artificial", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
@@ -792,8 +800,6 @@ Assinatura Spotify, 34.90, EXPENSE, Assinaturas
                     }
                 }
 
-                Divider(modifier = Modifier.padding(vertical = 4.dp))
-
                 // Test connection row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -869,6 +875,34 @@ Assinatura Spotify, 34.90, EXPENSE, Assinaturas
                             modifier = Modifier.padding(12.dp)
                         )
                     }
+                }
+
+                if (false) {
+                     Row(
+                         modifier = Modifier.padding(12.dp),
+                         verticalAlignment = Alignment.CenterVertically
+                     ) {
+                         Icon(
+                             imageVector = Icons.Default.AutoAwesome,
+                             contentDescription = null,
+                             tint = MaterialTheme.colorScheme.primary,
+                             modifier = Modifier.size(24.dp)
+                         )
+                         Spacer(modifier = Modifier.width(12.dp))
+                         Column {
+                             Text(
+                                 text = "Google Gemini Conectado",
+                                 style = MaterialTheme.typography.bodyMedium,
+                                 fontWeight = FontWeight.Bold,
+                                 color = MaterialTheme.colorScheme.onPrimaryContainer
+                             )
+                             Text(
+                                 text = "O motor de IA oficial está integrado e ativado de forma gratuita para apoiar seu planejamento financeiro diário.",
+                                 style = MaterialTheme.typography.bodySmall,
+                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
+                             )
+                         }
+                     }
                 }
 
                 Divider(modifier = Modifier.padding(vertical = 4.dp))
@@ -1000,6 +1034,157 @@ Assinatura Spotify, 34.90, EXPENSE, Assinaturas
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Reports and Export block
+        Text("Exportação de Relatórios & Backup", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+        val context = LocalContext.current
+        var showRestoreSection by remember { mutableStateOf(false) }
+
+        Card(
+            modifier = Modifier.fillMaxWidth().testTag("export_reports_card")
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "Gere relatórios interativos e completos em formato HTML para visualizar e compartilhar, ou faça o download de um backup em formato JSON de suas informações.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Export HTML Button
+                    Button(
+                        onClick = {
+                            try {
+                                val htmlContent = viewModel.getHtmlReport()
+                                val cacheFile = File(context.cacheDir, "relatorio_financeiro.html")
+                                FileOutputStream(cacheFile).use { fos ->
+                                    fos.write(htmlContent.toByteArray(Charsets.UTF_8))
+                                }
+                                val authority = "${context.packageName}.fileprovider"
+                                val fileUri = FileProvider.getUriForFile(context, authority, cacheFile)
+
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/html"
+                                    putExtra(Intent.EXTRA_STREAM, fileUri)
+                                    putExtra(Intent.EXTRA_SUBJECT, "Relatório Financeiro - Finança AI")
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, "Compartilhar Relatório HTML"))
+                                importStatusMessage = "Relatório HTML exportado com sucesso!"
+                            } catch (e: Exception) {
+                                importStatusMessage = "Erro ao exportar relatório: ${e.message}"
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Description, null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Exportar HTML", fontSize = 12.sp)
+                    }
+
+                    // Export JSON Button
+                    Button(
+                        onClick = {
+                            try {
+                                val jsonContent = viewModel.exportBackupToJson()
+                                val cacheFile = File(context.cacheDir, "backup_financa_ai.json")
+                                FileOutputStream(cacheFile).use { fos ->
+                                    fos.write(jsonContent.toByteArray(Charsets.UTF_8))
+                                }
+                                val authority = "${context.packageName}.fileprovider"
+                                val fileUri = FileProvider.getUriForFile(context, authority, cacheFile)
+
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/json"
+                                    putExtra(Intent.EXTRA_STREAM, fileUri)
+                                    putExtra(Intent.EXTRA_SUBJECT, "Backup de Dados - Finança AI")
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, "Compartilhar Backup JSON"))
+                                importStatusMessage = "Backup JSON exportado com sucesso!"
+                            } catch (e: Exception) {
+                                importStatusMessage = "Erro ao exportar backup: ${e.message}"
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Backup, null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Exportar JSON", fontSize = 12.sp)
+                    }
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // Restore backup button/toggle
+                TextButton(
+                    onClick = { showRestoreSection = !showRestoreSection },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = if (showRestoreSection) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = null
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Restaurar Backup de Dados (JSON)", fontSize = 13.sp)
+                }
+
+                if (showRestoreSection) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            "Cole o conteúdo do arquivo JSON exportado anteriormente para restaurar todo o seu histórico financeiro no banco de dados local.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        OutlinedTextField(
+                            value = rawRestoreText,
+                            onValueChange = { rawRestoreText = it },
+                            label = { Text("Conteúdo do arquivo JSON de Backup") },
+                            placeholder = { Text("{ \"accounts\": [...], ... }") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+
+                        Button(
+                            onClick = {
+                                if (rawRestoreText.isNotEmpty()) {
+                                    val success = viewModel.restoreBackupFromJson(rawRestoreText)
+                                    if (success) {
+                                        importStatusMessage = "Backup de dados restaurado com sucesso!"
+                                        rawRestoreText = ""
+                                        showRestoreSection = false
+                                    } else {
+                                        importStatusMessage = "Erro ao restaurar: Formato de JSON inválido ou incompatível."
+                                    }
+                                } else {
+                                    importStatusMessage = "Por favor, cole um conteúdo JSON válido."
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Restore, null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Restaurar Banco de Dados")
                         }
                     }
                 }

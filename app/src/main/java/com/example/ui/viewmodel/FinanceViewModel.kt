@@ -428,6 +428,12 @@ class FinanceViewModel(application: Application, private val repository: Finance
     )
     val chatMessages: StateFlow<List<ChatMessage>> get() = _chatMessages
 
+    fun clearChat() {
+        _chatMessages.value = listOf(
+            ChatMessage(text = "Olá! Eu sou o seu Finança AI Coach. Como posso te apoiar no seu planejamento financeiro hoje?", isUser = false)
+        )
+    }
+
     private val _isAiLoading = MutableStateFlow(false)
     val isAiLoading: StateFlow<Boolean> get() = _isAiLoading
 
@@ -1374,6 +1380,20 @@ class FinanceViewModel(application: Application, private val repository: Finance
             _aiReport.value = responseText
             _isAiLoading.value = false
         }
+    }
+
+    fun getHtmlReport(): String {
+        return com.example.data.utils.ReportExporter.generateHtmlReport(
+            userName = userName.value,
+            accounts = accounts.value,
+            transactions = transactions.value,
+            investments = investments.value,
+            goals = goals.value,
+            challenges = challenges.value,
+            billsToPay = billsToPay.value,
+            billsToReceive = billsToReceive.value,
+            currencySymbol = currency.value
+        )
     }
 
     fun exportBackupToJson(): String {

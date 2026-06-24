@@ -21,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -189,29 +190,6 @@ fun DashboardScreen(
                     )
                 }
             } else {
-                // Top consolidated metrics cards
-                item {
-                    DashboardTopMetricsWidget(
-                        viewModel = viewModel,
-                        saldoAtual = totalAccountBalance,
-                        totalAReceber = totalPendingAReceber,
-                        totalAPagar = totalPendingAPagar,
-                        patrimonioTotal = netWorth,
-                        investimentos = totalInvestmentValue,
-                        limiteCartoes = creditCardsState.sumOf { it.limitAmount }
-                    )
-                }
-
-                // Alerts widget
-                item {
-                    DashboardAlertsSection(
-                        viewModel = viewModel,
-                        billsToPay = billsToPayState,
-                        billsToReceive = billsToReceiveState,
-                        goals = goalsState
-                    )
-                }
-
                 if (isWideScreen) {
                     // TABLET / WIDE LANDSCAPE ADAPTIVE SPLIT GRID
                     item {
@@ -235,6 +213,21 @@ fun DashboardScreen(
                                     onNavigateToPagar = { showPagarManager = true },
                                     onNavigateToReceber = { showReceberManager = true },
                                     onNavigateToInventario = { showInventarioManager = true }
+                                )
+                                DashboardAlertsSection(
+                                    viewModel = viewModel,
+                                    billsToPay = billsToPayState,
+                                    billsToReceive = billsToReceiveState,
+                                    goals = goalsState
+                                )
+                                DashboardTopMetricsWidget(
+                                    viewModel = viewModel,
+                                    saldoAtual = totalAccountBalance,
+                                    totalAReceber = totalPendingAReceber,
+                                    totalAPagar = totalPendingAPagar,
+                                    patrimonioTotal = netWorth,
+                                    investimentos = totalInvestmentValue,
+                                    limiteCartoes = creditCardsState.sumOf { it.limitAmount }
                                 )
                             }
 
@@ -297,6 +290,25 @@ fun DashboardScreen(
                             onNavigateToPagar = { showPagarManager = true },
                             onNavigateToReceber = { showReceberManager = true },
                             onNavigateToInventario = { showInventarioManager = true }
+                        )
+                    }
+                    item {
+                        DashboardAlertsSection(
+                            viewModel = viewModel,
+                            billsToPay = billsToPayState,
+                            billsToReceive = billsToReceiveState,
+                            goals = goalsState
+                        )
+                    }
+                    item {
+                        DashboardTopMetricsWidget(
+                            viewModel = viewModel,
+                            saldoAtual = totalAccountBalance,
+                            totalAReceber = totalPendingAReceber,
+                            totalAPagar = totalPendingAPagar,
+                            patrimonioTotal = netWorth,
+                            investimentos = totalInvestmentValue,
+                            limiteCartoes = creditCardsState.sumOf { it.limitAmount }
                         )
                     }
                     item {
@@ -1793,15 +1805,27 @@ fun DashboardBalanceCard(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("balance_card"),
-        shape = RoundedCornerShape(32.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+        shape = RoundedCornerShape(28.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .padding(28.dp)
                 .fillMaxWidth()
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                            MaterialTheme.colorScheme.tertiary
+                        )
+                    )
+                )
         ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxWidth()
+            ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1918,6 +1942,7 @@ fun DashboardBalanceCard(
                 }
             }
         }
+      }
     }
 }
 
@@ -1931,132 +1956,66 @@ fun DashboardQuickActions(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Action 1: Pagar (Pay)
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .weight(1f)
-                .clickable { onNavigateToPagar() }
-        ) {
-            Surface(
-                modifier = Modifier.size(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                tonalElevation = 2.dp
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Payments,
-                        contentDescription = "Pagar",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Pagar",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
+        val actions = listOf(
+            Triple("Pagar", Icons.Default.Payments, onNavigateToPagar),
+            Triple("Receber", Icons.Default.AddCard, onNavigateToReceber),
+            Triple("Inventário", Icons.Default.Inventory2, onNavigateToInventario),
+            Triple("Metas", Icons.Default.TrackChanges, onNavigateToChallenges)
+        )
 
-        // Action 2: Receber (Receive)
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .weight(1f)
-                .clickable { onNavigateToReceber() }
-        ) {
-            Surface(
-                modifier = Modifier.size(56.dp),
+        actions.forEach { (title, icon, action) ->
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(96.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable { action() },
                 shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                tonalElevation = 2.dp
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                ),
+                border = androidx.compose.foundation.BorderStroke(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.AddCard,
-                        contentDescription = "Receber",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(24.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                                shape = RoundedCornerShape(12.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = title,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Receber",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
-
-        // Action 3: Inventário (Control)
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .weight(1f)
-                .clickable { onNavigateToInventario() }
-        ) {
-            Surface(
-                modifier = Modifier.size(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                tonalElevation = 2.dp
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Inventory2,
-                        contentDescription = "Inventário",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Inventário",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
-
-        // Action 4: Metas (Goals)
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .weight(1f)
-                .clickable { onNavigateToChallenges() }
-        ) {
-            Surface(
-                modifier = Modifier.size(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                tonalElevation = 2.dp
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.TrackChanges,
-                        contentDescription = "Metas",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Metas",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
         }
     }
 }
@@ -2143,45 +2102,128 @@ fun DashboardSummaryCard(
 
 @Composable
 fun DashboardHealthCard(viewModel: FinanceViewModel) {
+    val transactions by viewModel.transactions.collectAsState()
+    val expenseTotal = transactions.filter { it.type == "EXPENSE" }.sumOf { it.amount }
+    val incomeTotal = transactions.filter { it.type == "INCOME" }.sumOf { it.amount }
+    
+    val score: Int
+    val scoreColor: Color
+    val scoreLabel: String
+    val scoreDesc: String
+    
+    if (incomeTotal == 0.0) {
+        score = 50
+        scoreColor = Color(0xFFFBC02D) // Yellow
+        scoreLabel = "Sem Renda Registrada"
+        scoreDesc = "Registre receitas na tela de transações para calcular o seu Score de Saúde Financeira."
+    } else {
+        val ratio = expenseTotal / incomeTotal
+        when {
+            ratio < 0.5 -> {
+                score = 95
+                scoreColor = Color(0xFF2E7D32) // Green
+                scoreLabel = "Excelente"
+                scoreDesc = "Fantástico! Você está poupando mais de 50% de tudo o que ganha mensalmente."
+            }
+            ratio < 0.7 -> {
+                score = 75
+                scoreColor = Color(0xFF4CAF50) // Light Green
+                scoreLabel = "Regular"
+                scoreDesc = "Equilibrado. Suas receitas cobrem bem os custos. Tente criar metas de poupança."
+            }
+            ratio < 0.9 -> {
+                score = 42
+                scoreColor = Color(0xFFEF6C00) // Orange
+                scoreLabel = "Alerta de Gastos"
+                scoreDesc = "Atenção: seus gastos estão consumindo quase toda a sua renda. Reduza custos supérfluos."
+            }
+            else -> {
+                score = 15
+                scoreColor = Color(0xFFC62828) // Red
+                scoreLabel = "Crítico"
+                scoreDesc = "Alerta máximo! Suas despesas excedem ou estão perigosamente no limite de sua renda."
+            }
+        }
+    }
+
     Card(
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.size(40.dp)
+            // Radial Gauge Score Indicator
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(75.dp)
             ) {
-                Box(contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    progress = score / 100f,
+                    modifier = Modifier.size(75.dp),
+                    color = scoreColor,
+                    strokeWidth = 6.dp,
+                    trackColor = scoreColor.copy(alpha = 0.12f)
+                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "IA",
-                        color = MaterialTheme.colorScheme.background,
+                        text = "$score",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 18.sp
+                    )
+                    Text(
+                        text = "SCORE",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyMedium
+                        fontSize = 8.sp,
+                        letterSpacing = 0.5.sp
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
+
+            // Description and Status Pills
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Saúde Financeira",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    
+                    Surface(
+                        color = scoreColor.copy(alpha = 0.15f),
+                        contentColor = scoreColor,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = scoreLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(6.dp))
+                
                 Text(
-                    text = "Saúde Financeira (Sugestão Inteligente)",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = viewModel.getTotalFinancialHealthScore(),
+                    text = scoreDesc,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 16.sp
                 )
             }
         }
@@ -2375,7 +2417,10 @@ fun DashboardGoalsSection(
                 text = "Ver Todas",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable { onManageGoals() }
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onManageGoals() }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             )
         }
 
@@ -2397,6 +2442,7 @@ fun DashboardGoalsSection(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
                         .clickable {
                             viewModel.contributeToGoal(goal.id, 250.0)
                         },
@@ -2472,6 +2518,7 @@ fun DashboardPromoCard(onNavigateToChallenges: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
             .clickable { onNavigateToChallenges() },
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
@@ -2644,97 +2691,108 @@ fun DashboardTopMetricsWidget(
     investimentos: Double,
     limiteCartoes: Double
 ) {
-    Card(
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        // Card 1: A Receber
+        Card(
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFFE8F5E9).copy(alpha = 0.85f)
+            ),
+            border = androidx.compose.foundation.BorderStroke(
+                width = 1.dp,
+                color = Color(0xFF81C784).copy(alpha = 0.4f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Analytics,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Resumo Consolidado",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            // Grid of 4 key metrics
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color(0xFF2E7D32).copy(alpha = 0.12f), CircleShape),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Metric 1: Patrimonio Líquido
-                    Card(
-                        modifier = Modifier.weight(1f),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Patrimônio Total", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Medium)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(viewModel.formatMoney(patrimonioTotal), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-
-                    // Metric 2: Saldo Disponível
-                    Card(
-                        modifier = Modifier.weight(1f),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Contas e Dinheiro", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(viewModel.formatMoney(saldoAtual), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-                        }
-                    }
+                    Icon(
+                        imageVector = Icons.Default.ArrowUpward,
+                        contentDescription = "A Receber",
+                        tint = Color(0xFF2E7D32),
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
+                Column {
+                    Text(
+                        text = "A Receber",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF1B5E20),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = viewModel.formatMoney(totalAReceber),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFF2E7D32)
+                    )
+                }
+            }
+        }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+        // Card 2: A Pagar
+        Card(
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFFFFEBEE).copy(alpha = 0.85f)
+            ),
+            border = androidx.compose.foundation.BorderStroke(
+                width = 1.dp,
+                color = Color(0xFFE57373).copy(alpha = 0.4f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color(0xFFC62828).copy(alpha = 0.12f), CircleShape),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Metric 3: A Receber
-                    Card(
-                        modifier = Modifier.weight(1f),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE6F4EA)),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Total a Receber", style = MaterialTheme.typography.labelSmall, color = Color(0xFF137333), fontWeight = FontWeight.Medium)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(viewModel.formatMoney(totalAReceber), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color(0xFF0F9D58))
-                        }
-                    }
-
-                    // Metric 4: A Pagar
-                    Card(
-                        modifier = Modifier.weight(1f),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFCE8E6)),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Total a Pagar", style = MaterialTheme.typography.labelSmall, color = Color(0xFFC5221F), fontWeight = FontWeight.Medium)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(viewModel.formatMoney(totalAPagar), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color(0xFFD93025))
-                        }
-                    }
+                    Icon(
+                        imageVector = Icons.Default.ArrowDownward,
+                        contentDescription = "A Pagar",
+                        tint = Color(0xFFC62828),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Column {
+                    Text(
+                        text = "A Pagar",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFB71C1C),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = viewModel.formatMoney(totalAPagar),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFFC62828)
+                    )
                 }
             }
         }

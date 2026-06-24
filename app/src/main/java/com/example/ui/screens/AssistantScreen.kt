@@ -60,7 +60,11 @@ fun AssistantScreen(viewModel: FinanceViewModel) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.padding(bottom = 4.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(bottom = 4.dp)
+                    .weight(1f)
+            ) {
                 Text(
                     text = "MENTORIA INTELIGENTE DE FINANÇAS",
                     style = MaterialTheme.typography.labelSmall,
@@ -76,12 +80,27 @@ fun AssistantScreen(viewModel: FinanceViewModel) {
                     color = MaterialTheme.colorScheme.onBackground
                 )
             }
-            Icon(
-                imageVector = Icons.Default.AutoAwesome,
-                contentDescription = "IA",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                IconButton(
+                    onClick = { viewModel.clearChat() },
+                    modifier = Modifier.testTag("clear_chat_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DeleteSweep,
+                        contentDescription = "Limpar Histórico",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.AutoAwesome,
+                    contentDescription = "IA",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -119,34 +138,77 @@ fun AssistantScreen(viewModel: FinanceViewModel) {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         }
 
-                        val align = if (msg.isUser) Alignment.End else Alignment.Start
-
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = align
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = if (msg.isUser) Arrangement.End else Arrangement.Start,
+                            verticalAlignment = Alignment.Top
                         ) {
-                            Text(
-                                text = if (msg.isUser) "Você" else "Finança Coach",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                            )
-                            Surface(
-                                shape = RoundedCornerShape(
-                                    topStart = 16.dp,
-                                    topEnd = 16.dp,
-                                    bottomStart = if (msg.isUser) 16.dp else 2.dp,
-                                    bottomEnd = if (msg.isUser) 2.dp else 16.dp
-                                ),
-                                color = bubbleBg,
-                                modifier = Modifier.widthIn(max = 280.dp)
+                            if (!msg.isUser) {
+                                // AI Assistant Avatar
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.AutoAwesome,
+                                            contentDescription = "AI Coach",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
+
+                            Column(
+                                horizontalAlignment = if (msg.isUser) Alignment.End else Alignment.Start
                             ) {
                                 Text(
-                                    text = msg.text,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = bubbleTextCol,
-                                    modifier = Modifier.padding(12.dp)
+                                    text = if (msg.isUser) "Você" else "Finança AI Coach",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                                 )
+                                Surface(
+                                    shape = RoundedCornerShape(
+                                        topStart = if (msg.isUser) 16.dp else 4.dp,
+                                        topEnd = if (msg.isUser) 4.dp else 16.dp,
+                                        bottomStart = 16.dp,
+                                        bottomEnd = 16.dp
+                                    ),
+                                    color = bubbleBg,
+                                    modifier = Modifier.widthIn(max = 280.dp)
+                                ) {
+                                    Text(
+                                        text = msg.text,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = bubbleTextCol,
+                                        modifier = Modifier.padding(12.dp)
+                                    )
+                                }
+                            }
+
+                            if (msg.isUser) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                // User Avatar
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = "Você",
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -156,19 +218,55 @@ fun AssistantScreen(viewModel: FinanceViewModel) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(8.dp),
-                                horizontalArrangement = Arrangement.Start
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.Start,
+                                verticalAlignment = Alignment.Top
                             ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    strokeWidth = 2.dp
-                                )
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.AutoAwesome,
+                                            contentDescription = "AI Coach",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    "Finança AI Coach está analisando sua carteira...",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                                Column {
+                                    Text(
+                                        "Finança AI Coach",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(topStart = 4.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp),
+                                        color = MaterialTheme.colorScheme.surfaceVariant,
+                                        modifier = Modifier.widthIn(max = 280.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(16.dp),
+                                                strokeWidth = 2.dp,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            Text(
+                                                "Pensando...",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
